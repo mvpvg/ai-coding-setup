@@ -72,3 +72,25 @@ def test_uninstall_schedule_removes_plist(monkeypatch, tmp_path, mocker):
     console = Console(file=io.StringIO())
     uninstall_schedule(console=console)
     assert not plist_path.exists()
+
+
+def test_install_schedule_windows_calls_schtasks(monkeypatch, tmp_path, mocker):
+    monkeypatch.setattr("platform.system", lambda: "Windows")
+    mocker.patch("scripts.schedule.safe_run", return_value=MagicMock(returncode=0))
+    stack_path = tmp_path / "stack.toml"
+    write_toml(stack_path, {})
+    console = Console(file=io.StringIO())
+    install_schedule(stack_path, console=console)
+    out = console.file.getvalue()
+    assert "DevStackAuditPush" in out
+
+
+def test_uninstall_schedule_windows_not_installed(monkeypatch, mocker):
+    monkeypatch.setattr("platform.system", lambda: "Windows")
+    mocker.patch(
+        "scripts.schedule.safe_run",
+        return_value=MagicMock(returncode=1),
+    )
+    console = Console(file=io.StringIO())
+    uninstall_schedule(console=console)
+    assert "Not installed" in console.file.getvalue()

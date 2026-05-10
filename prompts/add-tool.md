@@ -21,7 +21,7 @@ my_tool = { trigger = "manual", source = "pypi", package = "my-package", pinned_
 Present the draft entry and explain the rationale. Ask for confirmation before appending to `stack.toml`. If confirmed, append the entry to the correct section and run:
 
 ```bash
-python scripts/update_stack.py --stack stack.toml generate
+python -m scripts.update_stack generate
 ```
 
 to regenerate `STACK.md` and `MANIFEST.json`.

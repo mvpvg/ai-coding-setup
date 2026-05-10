@@ -2,7 +2,7 @@ Compare installed tool versions in `stack.toml` against their latest published v
 
 If `research_results.json` exists, run:
 ```bash
-python scripts/update_stack.py --stack stack.toml update --research research_results.json
+python -m scripts.update_stack update --research research_results.json
 ```
 
 If `research_results.json` does not exist, first use `/refresh-stack` to generate it, then run the command above.
