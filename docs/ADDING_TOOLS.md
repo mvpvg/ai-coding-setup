@@ -18,16 +18,14 @@
 ## Fields
 
 ```toml
-[base_tools]
-my_tool = {
-    source = "npm",          # npm | pypi | github | marketplace | official | github_release
-    package = "@scope/pkg",  # package name (npm/pypi) or repo (github)
-    pinned_version = "1.2.3", # exact version; omit to leave unpinned
-    min_version = "1.0.0",   # minimum acceptable version (used by validate.py)
-    id = "plugin-id",        # marketplace/official ID (when source != npm/pypi)
-    extras = "full",         # pypi extras (e.g. package[full])
-    path = "skills/foo",     # subpath within a github repo
-}
+[base_tools.my_tool]
+source = "npm"           # npm | pypi | github | marketplace | official | github_release
+package = "@scope/pkg"   # package name (npm/pypi) or repo (github)
+pinned_version = "1.2.3" # exact version; omit to leave unpinned
+min_version = "1.0.0"    # minimum acceptable version (used by validate.py)
+id = "plugin-id"         # marketplace/official ID (when source != npm/pypi)
+extras = "full"          # pypi extras (e.g. package[full])
+path = "skills/foo"      # subpath within a github repo
 ```
 
 ## Using /add-tool

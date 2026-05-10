@@ -41,7 +41,7 @@ Any failure mid-apply → auto-restore from pre-change snapshot.
 | `generate_manifest.py` | Pure function: stack dict → `MANIFEST.json` + `STACK.md`. |
 | `research.py` | Brief generation + JSON parsing + validation orchestration. |
 | `tolaria_writer.py` | Decision notes to Tolaria vault on every applied change. |
-| `schedule.py` | Install/uninstall launchd plist (macOS) or Task Scheduler XML (Windows). |
+| `schedule.py` | Install/uninstall launchd plist (macOS) or Task Scheduler XML (Windows). _(added in build step 18)_ |
 
 ## Data Flow
 

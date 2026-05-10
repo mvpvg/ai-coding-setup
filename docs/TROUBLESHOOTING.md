@@ -53,9 +53,9 @@ PYTHONPATH=. pytest
 
 Disable the listed plugins in `~/.claude/settings.json` before running bootstrap. The check is intentional — conflicting plugins cause redundant or broken behavior.
 
-## AllowlistError: domain not in allowlist
+## DomainNotAllowedError: domain not in allowlist
 
-A script attempted to contact a domain not in `stack.toml [security] allowlisted_domains`. Add the domain to the allowlist in `stack.toml` if it is legitimate, then retry.
+A script attempted to contact a domain not in the allowed list. The allowlist is a hardcoded `frozenset` in `scripts/lib/allowlist.py` (`ALLOWED_DOMAINS`). To add a new domain, edit `ALLOWED_DOMAINS` in that file and run the tests to verify.
 
 ## Windows: launchd commands not found
 
