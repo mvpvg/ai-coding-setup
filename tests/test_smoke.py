@@ -7,8 +7,6 @@ import io
 import json
 from pathlib import Path
 
-import pytest
-
 from rich.console import Console
 from scripts.lib.config import read_toml
 from scripts.update_stack import cmd_check
@@ -70,9 +68,13 @@ def test_prompts_exist():
 def test_collect_tools_returns_all_stack_sections():
     data = read_toml(STACK_PATH)
     tools = _collect_tools(data)
-    tool_ids = {t["id"] for t in tools}
-    assert "superpowers" in tool_ids
-    assert "context7" in tool_ids
+    expected_count = sum(
+        len(data.get(s, {}))
+        for s in ("base_tools", "mcp_servers", "per_project")
+    )
+    assert len(tools) == expected_count
+    sections_present = {t["section"] for t in tools}
+    assert sections_present == {"base_tools", "mcp_servers", "per_project"}
 
 
 def test_generate_manifest_round_trips(tmp_path):
