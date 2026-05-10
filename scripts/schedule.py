@@ -5,8 +5,8 @@ import sys
 from pathlib import Path
 
 from rich.console import Console
+from xml.sax.saxutils import escape as _xml_escape
 
-from scripts.lib.config import read_toml
 from scripts.lib.subprocess_safe import run as safe_run
 
 _PLIST_LABEL = "com.devstack.audit.push"
@@ -28,16 +28,16 @@ def render_plist(python_path: str, stack_path: str, working_dir: str, log_path: 
         f"    <string>{_PLIST_LABEL}</string>\n"
         "    <key>ProgramArguments</key>\n"
         "    <array>\n"
-        f"        <string>{python_path}</string>\n"
+        f"        <string>{_xml_escape(python_path)}</string>\n"
         "        <string>-m</string>\n"
         "        <string>scripts.update_stack</string>\n"
         "        <string>--stack</string>\n"
-        f"        <string>{stack_path}</string>\n"
+        f"        <string>{_xml_escape(stack_path)}</string>\n"
         "        <string>audit</string>\n"
         "        <string>push</string>\n"
         "    </array>\n"
         "    <key>WorkingDirectory</key>\n"
-        f"    <string>{working_dir}</string>\n"
+        f"    <string>{_xml_escape(working_dir)}</string>\n"
         "    <key>StartCalendarInterval</key>\n"
         "    <dict>\n"
         "        <key>Hour</key>\n"
@@ -46,9 +46,9 @@ def render_plist(python_path: str, stack_path: str, working_dir: str, log_path: 
         "        <integer>0</integer>\n"
         "    </dict>\n"
         "    <key>StandardOutPath</key>\n"
-        f"    <string>{log_path}</string>\n"
+        f"    <string>{_xml_escape(log_path)}</string>\n"
         "    <key>StandardErrorPath</key>\n"
-        f"    <string>{log_path}</string>\n"
+        f"    <string>{_xml_escape(log_path)}</string>\n"
         "</dict>\n"
         "</plist>\n"
     )
@@ -66,9 +66,9 @@ def render_xml(python_path: str, stack_path: str, working_dir: str) -> str:
         "    </Triggers>\n"
         "    <Actions>\n"
         "        <Exec>\n"
-        f"            <Command>{python_path}</Command>\n"
-        f'            <Arguments>-m scripts.update_stack --stack "{stack_path}" audit push</Arguments>\n'
-        f"            <WorkingDirectory>{working_dir}</WorkingDirectory>\n"
+        f"            <Command>{_xml_escape(python_path)}</Command>\n"
+        f'            <Arguments>-m scripts.update_stack --stack "{_xml_escape(stack_path)}" audit push</Arguments>\n'
+        f"            <WorkingDirectory>{_xml_escape(working_dir)}</WorkingDirectory>\n"
         "        </Exec>\n"
         "    </Actions>\n"
         "    <RegistrationInfo>\n"
@@ -106,12 +106,14 @@ def install_schedule(stack_path: Path, *, console: Console | None = None) -> Non
             render_xml(python_path, str(stack_path.resolve()), working_dir),
             encoding="utf-16",
         )
-        safe_run(
-            ["schtasks", "/Create", "/XML", str(xml_path), "/TN", _TASK_NAME, "/F"],
-            capture_output=True,
-            check=True,
-        )
-        xml_path.unlink()
+        try:
+            safe_run(
+                ["schtasks", "/Create", "/XML", str(xml_path), "/TN", _TASK_NAME, "/F"],
+                capture_output=True,
+                check=True,
+            )
+        finally:
+            xml_path.unlink(missing_ok=True)
         _console.print(f"Installed: {_TASK_NAME} (Task Scheduler)")
 
 
