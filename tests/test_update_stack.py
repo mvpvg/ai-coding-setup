@@ -575,3 +575,5 @@ def test_cmd_update_apply_restores_on_failure(tmp_path, mocker):
         cmd_update(stack_path, research_path, apply=True)
 
     restore_mock.assert_called_once_with(pre_zip, snap_dir)
+    restored = read_toml(stack_path)
+    assert "pinned_version" not in restored["mcp_servers"]["context7"]

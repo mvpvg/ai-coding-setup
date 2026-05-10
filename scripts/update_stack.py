@@ -242,8 +242,10 @@ def _apply_update(
         create_snapshot(snapshot_dir, reason="post-update")
 
     except Exception:
-        restore_snapshot(pre_zip, snapshot_dir)
-        write_toml(stack_path, original_stack)
+        try:
+            restore_snapshot(pre_zip, snapshot_dir)
+        finally:
+            write_toml(stack_path, original_stack)
         raise
 
 
