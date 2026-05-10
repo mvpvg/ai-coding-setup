@@ -1,10 +1,12 @@
 import io
+import json
 import pytest
 from rich.console import Console
-from scripts.lib.config import write_toml
+from scripts.lib.config import read_toml, write_toml
 from scripts.update_stack import (
     ToolDiff, classify_tier, compute_diff, display_diff, cmd_check,
     cmd_snapshot, cmd_snapshots_list, cmd_snapshots_prune,
+    cmd_update,
 )
 
 
@@ -404,3 +406,172 @@ def test_cmd_snapshots_prune_nothing_to_prune(tmp_path, mocker):
     console, buf = _make_console()
     cmd_snapshots_prune(stack_path, console=console)
     assert "Nothing to prune" in buf.getvalue()
+
+
+# --- cmd_update ---
+
+def _make_research_file(tmp_path, tool_id="context7", version="1.5.2",
+                        breaking=None, status="active", advisories=None, notes=""):
+    data = {
+        "schema_version": "1",
+        "researched_at": "2026-05-10T00:00:00Z",
+        "tools": [{
+            "id": tool_id,
+            "verified": True,
+            "current_version": version,
+            "version_source_url": None,
+            "install_method": None,
+            "install_method_source_url": None,
+            "checksum_sha256": None,
+            "checksum_source_url": None,
+            "breaking_changes_since_pinned": breaking or [],
+            "deprecation_status": status,
+            "security_advisories": advisories or [],
+            "notes": notes or "",
+        }],
+    }
+    f = tmp_path / "research_results.json"
+    f.write_text(json.dumps(data), encoding="utf-8")
+    return f
+
+
+def _write_stack_with_tool(path, snap_dir, tool_id="context7",
+                            section="mcp_servers", pinned=None, tolaria=""):
+    cfg = {"source": "npm", "package": f"@pkg/{tool_id}"}
+    if pinned is not None:
+        cfg["pinned_version"] = pinned
+    write_toml(path, {
+        "meta": {"schema_version": "1", "created": "", "last_validated": ""},
+        "paths": {"snapshot_dir": str(snap_dir), "tolaria_vault": tolaria},
+        "github": {"private_snapshot_repo": "snapshots"},
+        "base_tools": {},
+        "mcp_servers": {tool_id: cfg} if section == "mcp_servers" else {},
+        "per_project": {},
+    })
+
+
+def test_cmd_update_no_apply_shows_diff(tmp_path):
+    snap_dir = tmp_path / "snaps"
+    snap_dir.mkdir()
+    stack_path = tmp_path / "stack.toml"
+    _write_stack_with_tool(stack_path, snap_dir)
+    research_path = _make_research_file(tmp_path)
+    console, buf = _make_console()
+    cmd_update(stack_path, research_path, apply=False, console=console)
+    out = buf.getvalue()
+    assert "context7" in out
+    assert "1.5.2" in out
+
+
+def test_cmd_update_no_apply_does_not_modify_stack(tmp_path):
+    snap_dir = tmp_path / "snaps"
+    snap_dir.mkdir()
+    stack_path = tmp_path / "stack.toml"
+    _write_stack_with_tool(stack_path, snap_dir)
+    research_path = _make_research_file(tmp_path)
+    cmd_update(stack_path, research_path, apply=False)
+    updated = read_toml(stack_path)
+    assert "pinned_version" not in updated["mcp_servers"]["context7"]
+
+
+def test_cmd_update_no_apply_no_changes(tmp_path):
+    snap_dir = tmp_path / "snaps"
+    snap_dir.mkdir()
+    stack_path = tmp_path / "stack.toml"
+    _write_stack_with_tool(stack_path, snap_dir, pinned="1.5.2")
+    research_path = _make_research_file(tmp_path, version="1.5.2")
+    console, buf = _make_console()
+    cmd_update(stack_path, research_path, apply=False, console=console)
+    assert "No changes" in buf.getvalue()
+
+
+def test_cmd_update_apply_writes_pinned_version(tmp_path, mocker):
+    snap_dir = tmp_path / "snaps"
+    snap_dir.mkdir()
+    stack_path = tmp_path / "stack.toml"
+    _write_stack_with_tool(stack_path, snap_dir)
+    research_path = _make_research_file(tmp_path, version="1.5.2")
+    mocker.patch("scripts.update_stack.create_snapshot",
+                 return_value=snap_dir / "fake.zip")
+    mocker.patch("scripts.update_stack.write_decision_note")
+    cmd_update(stack_path, research_path, apply=True)
+    updated = read_toml(stack_path)
+    assert updated["mcp_servers"]["context7"]["pinned_version"] == "1.5.2"
+
+
+def test_cmd_update_apply_calls_pre_and_post_snapshot(tmp_path, mocker):
+    snap_dir = tmp_path / "snaps"
+    snap_dir.mkdir()
+    stack_path = tmp_path / "stack.toml"
+    _write_stack_with_tool(stack_path, snap_dir)
+    research_path = _make_research_file(tmp_path)
+    mock = mocker.patch("scripts.update_stack.create_snapshot",
+                        return_value=snap_dir / "fake.zip")
+    mocker.patch("scripts.update_stack.write_decision_note")
+    cmd_update(stack_path, research_path, apply=True)
+    reasons = [call.kwargs.get("reason") or call.args[1]
+               for call in mock.call_args_list]
+    assert "pre-update" in reasons
+    assert "post-update" in reasons
+
+
+def test_cmd_update_apply_writes_tolaria_note(tmp_path, mocker):
+    snap_dir = tmp_path / "snaps"
+    snap_dir.mkdir()
+    vault_dir = tmp_path / "vault"
+    vault_dir.mkdir()
+    stack_path = tmp_path / "stack.toml"
+    _write_stack_with_tool(stack_path, snap_dir, tolaria=str(vault_dir))
+    research_path = _make_research_file(tmp_path, version="1.5.2")
+    mocker.patch("scripts.update_stack.create_snapshot",
+                 return_value=snap_dir / "fake.zip")
+    note_mock = mocker.patch("scripts.update_stack.write_decision_note")
+    cmd_update(stack_path, research_path, apply=True)
+    note_mock.assert_called_once()
+    call_kwargs = note_mock.call_args
+    assert call_kwargs.args[1] == "context7"   # tool_id (positional)
+    assert call_kwargs.args[2] == "1.5.2"      # new_version (positional)
+
+
+def test_cmd_update_apply_no_tolaria_vault_skips_note(tmp_path, mocker):
+    snap_dir = tmp_path / "snaps"
+    snap_dir.mkdir()
+    stack_path = tmp_path / "stack.toml"
+    _write_stack_with_tool(stack_path, snap_dir, tolaria="")
+    research_path = _make_research_file(tmp_path)
+    mocker.patch("scripts.update_stack.create_snapshot",
+                 return_value=snap_dir / "fake.zip")
+    note_mock = mocker.patch("scripts.update_stack.write_decision_note")
+    cmd_update(stack_path, research_path, apply=True)
+    note_mock.assert_not_called()
+
+
+def test_cmd_update_apply_restores_on_failure(tmp_path, mocker):
+    snap_dir = tmp_path / "snaps"
+    snap_dir.mkdir()
+    vault_dir = tmp_path / "vault"
+    vault_dir.mkdir()
+    stack_path = tmp_path / "stack.toml"
+    _write_stack_with_tool(stack_path, snap_dir, tolaria=str(vault_dir))
+    research_path = _make_research_file(tmp_path)
+
+    pre_zip = snap_dir / "pre.zip"
+    pre_zip.touch()
+
+    call_count = 0
+    def snap_side_effect(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return pre_zip
+        raise RuntimeError("disk full")
+
+    mocker.patch("scripts.update_stack.create_snapshot", side_effect=snap_side_effect)
+    mocker.patch("scripts.update_stack.write_decision_note",
+                 side_effect=RuntimeError("vault error"))
+    restore_mock = mocker.patch("scripts.update_stack.restore_snapshot")
+
+    with pytest.raises(RuntimeError):
+        cmd_update(stack_path, research_path, apply=True)
+
+    restore_mock.assert_called_once_with(pre_zip, snap_dir)

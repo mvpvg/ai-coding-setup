@@ -210,3 +210,67 @@ def cmd_snapshots_prune(stack_path: Path, *, console: Console | None = None) -> 
             _console.print(f"Pruned: {p.name}")
     else:
         _console.print("Nothing to prune")
+
+
+def _apply_update(
+    stack_path: Path,
+    stack: dict[str, Any],
+    diffs: list[ToolDiff],
+    snapshot_dir: Path,
+    tolaria_vault: Path | None,
+    console: Console,
+) -> None:
+    original_stack = copy.deepcopy(stack)
+    pre_zip = create_snapshot(snapshot_dir, reason="pre-update")
+
+    try:
+        for diff in diffs:
+            if diff.new_version is not None:
+                stack[diff.section][diff.tool_id]["pinned_version"] = diff.new_version
+        write_toml(stack_path, stack)
+
+        if tolaria_vault is not None:
+            for diff in diffs:
+                write_decision_note(
+                    tolaria_vault,
+                    diff.tool_id,
+                    diff.new_version or "",
+                    "stack update",
+                    previous_version=diff.current_version,
+                )
+
+        create_snapshot(snapshot_dir, reason="post-update")
+
+    except Exception:
+        restore_snapshot(pre_zip, snapshot_dir)
+        write_toml(stack_path, original_stack)
+        raise
+
+
+def cmd_update(
+    stack_path: Path,
+    research_path: Path,
+    *,
+    apply: bool = False,
+    console: Console | None = None,
+) -> None:
+    _console = console or Console()
+    cfg = read_toml(stack_path)
+    research_data = parse_research_results(research_path)
+    diffs = compute_diff(cfg, research_data)
+
+    display_diff(diffs, console=_console)
+
+    if not apply or not diffs:
+        return
+
+    snapshot_dir_str = cfg.get("paths", {}).get("snapshot_dir", "")
+    if not snapshot_dir_str:
+        raise RuntimeError("snapshot_dir not configured in stack.toml — run bootstrap first")
+    snapshot_dir = Path(snapshot_dir_str)
+
+    tolaria_vault_str = cfg.get("paths", {}).get("tolaria_vault", "")
+    tolaria_vault = Path(tolaria_vault_str) if tolaria_vault_str else None
+
+    _apply_update(stack_path, cfg, diffs, snapshot_dir, tolaria_vault, _console)
+    _console.print(f"Applied {len(diffs)} update{'s' if len(diffs) != 1 else ''}.")
