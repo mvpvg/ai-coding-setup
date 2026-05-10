@@ -276,3 +276,36 @@ def cmd_update(
 
     _apply_update(stack_path, cfg, diffs, snapshot_dir, tolaria_vault, _console)
     _console.print(f"Applied {len(diffs)} update{'s' if len(diffs) != 1 else ''}.")
+
+
+def cmd_restore(
+    stack_path: Path,
+    *,
+    latest: bool = False,
+    timestamp: str | None = None,
+    console: Console | None = None,
+) -> None:
+    _console = console or Console()
+    cfg = read_toml(stack_path)
+    snapshot_dir_str = cfg.get("paths", {}).get("snapshot_dir", "")
+    if not snapshot_dir_str:
+        raise RuntimeError("snapshot_dir not configured in stack.toml")
+    snapshot_dir = Path(snapshot_dir_str)
+    zips = sorted(snapshot_dir.glob("*.zip"), key=lambda p: p.name)
+
+    if not zips:
+        raise RuntimeError(f"No snapshots found in {snapshot_dir}")
+
+    if latest:
+        zip_path = zips[-1]
+    elif timestamp:
+        matches = [z for z in zips if z.name.startswith(timestamp)]
+        if not matches:
+            raise RuntimeError(f"No snapshot matching timestamp '{timestamp}'")
+        zip_path = matches[-1]
+    else:
+        raise RuntimeError("Specify --latest or a timestamp prefix")
+
+    _console.print(f"Restoring from {zip_path.name} ...")
+    restore_snapshot(zip_path, snapshot_dir)
+    _console.print("Restore complete.")

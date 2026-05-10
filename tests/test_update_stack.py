@@ -6,7 +6,7 @@ from scripts.lib.config import read_toml, write_toml
 from scripts.update_stack import (
     ToolDiff, classify_tier, compute_diff, display_diff, cmd_check,
     cmd_snapshot, cmd_snapshots_list, cmd_snapshots_prune,
-    cmd_update,
+    cmd_update, cmd_restore,
 )
 
 
@@ -577,3 +577,60 @@ def test_cmd_update_apply_restores_on_failure(tmp_path, mocker):
     restore_mock.assert_called_once_with(pre_zip, snap_dir)
     restored = read_toml(stack_path)
     assert "pinned_version" not in restored["mcp_servers"]["context7"]
+
+
+# --- cmd_restore ---
+
+def _write_stack_with_snaps(tmp_path, snap_names):
+    snap_dir = tmp_path / "snaps"
+    snap_dir.mkdir()
+    for name in snap_names:
+        (snap_dir / name).touch()
+    stack_path = tmp_path / "stack.toml"
+    _write_minimal_stack(stack_path, snapshot_dir=str(snap_dir))
+    return stack_path, snap_dir
+
+
+def test_cmd_restore_latest_picks_most_recent(tmp_path, mocker):
+    names = [
+        "2026-05-08_12-00-00_manual.zip",
+        "2026-05-09_12-00-00_manual.zip",
+        "2026-05-10_12-00-00_manual.zip",
+    ]
+    stack_path, snap_dir = _write_stack_with_snaps(tmp_path, names)
+    restore_mock = mocker.patch("scripts.update_stack.restore_snapshot")
+    cmd_restore(stack_path, latest=True)
+    restore_mock.assert_called_once_with(snap_dir / names[-1], snap_dir)
+
+
+def test_cmd_restore_by_timestamp(tmp_path, mocker):
+    names = [
+        "2026-05-09_12-00-00_manual.zip",
+        "2026-05-10_12-00-00_manual.zip",
+    ]
+    stack_path, snap_dir = _write_stack_with_snaps(tmp_path, names)
+    restore_mock = mocker.patch("scripts.update_stack.restore_snapshot")
+    cmd_restore(stack_path, timestamp="2026-05-09")
+    restore_mock.assert_called_once_with(snap_dir / names[0], snap_dir)
+
+
+def test_cmd_restore_timestamp_not_found_raises(tmp_path, mocker):
+    names = ["2026-05-10_12-00-00_manual.zip"]
+    stack_path, snap_dir = _write_stack_with_snaps(tmp_path, names)
+    mocker.patch("scripts.update_stack.restore_snapshot")
+    with pytest.raises(RuntimeError, match="No snapshot matching"):
+        cmd_restore(stack_path, timestamp="2026-05-01")
+
+
+def test_cmd_restore_no_snapshots_raises(tmp_path):
+    stack_path, _ = _write_stack_with_snaps(tmp_path, [])
+    with pytest.raises(RuntimeError, match="No snapshots found"):
+        cmd_restore(stack_path, latest=True)
+
+
+def test_cmd_restore_neither_latest_nor_timestamp_raises(tmp_path, mocker):
+    names = ["2026-05-10_12-00-00_manual.zip"]
+    stack_path, _ = _write_stack_with_snaps(tmp_path, names)
+    mocker.patch("scripts.update_stack.restore_snapshot")
+    with pytest.raises(RuntimeError, match="Specify --latest"):
+        cmd_restore(stack_path)
