@@ -144,6 +144,7 @@ def test_run_research_all_pass(tmp_path):
 
     assert all_passed is True
     assert log_path.exists()
+    assert len(results) >= 1
 
 def test_run_research_writes_log_on_url_failure(tmp_path):
     def handler(req):

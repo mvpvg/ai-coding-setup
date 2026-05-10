@@ -1,6 +1,8 @@
 """Research brief generation and results validation orchestration."""
 from __future__ import annotations
+import argparse
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -123,9 +125,6 @@ def run_research(
 
 
 if __name__ == "__main__":
-    import argparse
-    import sys
-
     parser = argparse.ArgumentParser(description="Research brief generation and validation")
     sub = parser.add_subparsers(dest="cmd")
 
