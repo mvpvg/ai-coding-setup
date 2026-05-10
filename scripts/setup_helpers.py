@@ -171,6 +171,15 @@ def write_opencode_mcp_config(name: str, config: dict[str, Any], project_dir: Pa
     config_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
+def install_skill(name: str, content: str) -> Path:
+    """Install a skill to ~/.claude/skills/<name>/SKILL.md (works for both Claude Code and OpenCode)."""
+    skills_dir = Path.home() / ".claude" / "skills" / name
+    skills_dir.mkdir(parents=True, exist_ok=True)
+    dest = skills_dir / "SKILL.md"
+    dest.write_text(content, encoding="utf-8")
+    return dest
+
+
 def install_opencode_command(name: str, content: str, global_install: bool = True) -> Path:
     """Write a custom OpenCode slash command.
 
@@ -241,6 +250,10 @@ def main() -> None:
     wom.add_argument("--project-dir", default=None,
                      help="Write to project opencode.json; omit for global ~/.config/opencode/opencode.json")
 
+    isk = sub.add_parser("install-skill")
+    isk.add_argument("name", help="Skill name (e.g. brainstorm, plan, tdd)")
+    isk.add_argument("file", help="Path to SKILL.md file to install")
+
     ioc = sub.add_parser("install-opencode-command")
     ioc.add_argument("name", help="Command name (without .md)")
     ioc.add_argument("file", help="Path to markdown file to install as command")
@@ -265,6 +278,10 @@ def main() -> None:
     elif args.cmd == "write-mcp":
         config = json.loads(args.config_json)
         write_mcp_config(args.name, config, Path(args.project_dir))
+    elif args.cmd == "install-skill":
+        content = Path(args.file).read_text(encoding="utf-8")
+        dest = install_skill(args.name, content)
+        print(f"Installed: {dest}")
     elif args.cmd == "write-opencode-mcp":
         config = json.loads(args.config_json)
         project_dir = Path(args.project_dir) if args.project_dir else None

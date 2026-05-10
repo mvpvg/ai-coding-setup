@@ -143,6 +143,14 @@ def test_apply_template_invalid_name_raises(tmp_path):
         apply_template("not_a_template", tmp_path)
 
 
+def test_install_skill(tmp_path, mocker):
+    from scripts.setup_helpers import install_skill
+    mocker.patch("scripts.setup_helpers.Path.home", return_value=tmp_path)
+    dest = install_skill("brainstorm", "# Brainstorm skill")
+    assert dest == tmp_path / ".claude" / "skills" / "brainstorm" / "SKILL.md"
+    assert dest.read_text() == "# Brainstorm skill"
+
+
 def test_write_opencode_mcp_config_creates_new(tmp_path):
     from scripts.setup_helpers import write_opencode_mcp_config
     write_opencode_mcp_config("context7", {"type": "stdio", "command": "pnpm"}, tmp_path)

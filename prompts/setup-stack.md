@@ -39,18 +39,34 @@ Run an AI-guided installation of the curated AI coding stack.
 
    | Source | Claude Code action | OpenCode equivalent |
    |--------|-------------------|---------------------|
-   | `marketplace` | Install plugin | **SKIP** — no plugin marketplace in OpenCode. Inform the user. |
+   | `marketplace` | Install plugin | Install bundled SKILL.md replacements (see below) |
    | `npm` (MCP) | `pnpm add -g <package>` | Same: `pnpm add -g <package>` |
    | `uv_tool` | `uv tool install` | Same: `uv tool install` |
-   | `github` (skill) | Clone, loads as Claude Code skill | Clone repo, then install SKILL.md as OpenCode global command: `python setup_helpers.py install-opencode-command <name> <path/to/SKILL.md>` |
+   | `github` (skill) | Clone, loads as Claude Code skill | Clone repo + install SKILL.md via `install-skill` |
    | `desktop` (MCP) | Write `.mcp.json` | Write `opencode.json` using `write-opencode-mcp` |
 
-   **GitHub skills on OpenCode — install each as a global command:**
-   - `grill_with_docs`: `python setup_helpers.py install-opencode-command grill-with-docs <cloned_repo>/skills/engineering/grill-with-docs/SKILL.md`
-   - `diagnose`: `python setup_helpers.py install-opencode-command diagnose <cloned_repo>/skills/engineering/diagnose/SKILL.md`
-   - `git_guardrails`: Install command only — `python setup_helpers.py install-opencode-command git-guardrails <cloned_repo>/skills/misc/git-guardrails-claude-code/SKILL.md`
+   **Marketplace plugins on OpenCode — install bundled SKILL.md replacements:**
 
-   **git-guardrails hooks on OpenCode:** Skip the hook installation step — OpenCode has no pre/post execution hook system. The command provides the guidance but won't auto-block.
+   Instead of Superpowers and frontend-design plugins, install the bundled skill files:
+   ```bash
+   # These replace Superpowers skills
+   python setup_helpers.py install-skill brainstorm     templates/skills/brainstorm/SKILL.md
+   python setup_helpers.py install-skill plan           templates/skills/plan/SKILL.md
+   python setup_helpers.py install-skill tdd            templates/skills/tdd/SKILL.md
+   python setup_helpers.py install-skill debug          templates/skills/debug/SKILL.md
+   python setup_helpers.py install-skill code-review    templates/skills/code-review/SKILL.md
+
+   # This replaces the frontend-design plugin
+   python setup_helpers.py install-skill frontend-design templates/skills/frontend-design/SKILL.md
+   ```
+   All skills install to `~/.claude/skills/<name>/SKILL.md` — OpenCode reads them automatically.
+
+   **GitHub skills on OpenCode — install each as a skill:**
+   - `grill_with_docs`: `python setup_helpers.py install-skill grill-with-docs <cloned_repo>/skills/engineering/grill-with-docs/SKILL.md`
+   - `diagnose`: `python setup_helpers.py install-skill diagnose <cloned_repo>/skills/engineering/diagnose/SKILL.md`
+   - `git_guardrails`: `python setup_helpers.py install-skill git-guardrails <cloned_repo>/skills/misc/git-guardrails-claude-code/SKILL.md`
+
+   **git-guardrails hooks on OpenCode:** Skip the hook installation step — OpenCode has no pre/post execution hook system. The skill file provides the guidance but won't auto-block.
 
    **MCP servers on OpenCode:** Use `write-opencode-mcp` instead of `write-mcp`:
    ```bash
@@ -115,7 +131,7 @@ Run an AI-guided installation of the curated AI coding stack.
 
 10. **Done.** Tell the user:
     - Tools installed (list what was installed vs skipped)
-    - If OpenCode: remind that marketplace plugins (Superpowers, frontend-design) are Claude Code only
+    - If OpenCode: confirm that bundled SKILL.md replacements were installed to `~/.claude/skills/`
     - Global `~/.claude/CLAUDE.md` written
     - Installer files archived to `_archive/bootstrap_.../`
     - Suggest: open any project, run `mempalace wake-up`, run `ccc index .`
@@ -124,11 +140,11 @@ Run an AI-guided installation of the curated AI coding stack.
 
 | Capability | Claude Code | OpenCode |
 |-----------|-------------|---------|
-| Superpowers plugin | ✅ | ❌ (no marketplace) |
-| frontend-design plugin | ✅ | ❌ |
-| grill-with-docs | ✅ skill | ✅ global command |
-| diagnose | ✅ skill | ✅ global command |
-| git-guardrails | ✅ skill + hooks | ✅ command only (no hooks) |
+| Superpowers plugin | ✅ marketplace plugin | ✅ bundled SKILL.md files (brainstorm/plan/tdd/debug/code-review) |
+| frontend-design plugin | ✅ marketplace plugin | ✅ bundled SKILL.md |
+| grill-with-docs | ✅ skill | ✅ skill (from GitHub clone) |
+| diagnose | ✅ skill | ✅ skill (from GitHub clone) |
+| git-guardrails | ✅ skill + hooks | ✅ skill only (no hooks) |
 | cocoindex-code | ✅ | ✅ |
 | mempalace | ✅ | ✅ |
 | Context7 MCP | ✅ `.mcp.json` | ✅ `opencode.json` |
