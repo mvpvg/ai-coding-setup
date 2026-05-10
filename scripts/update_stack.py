@@ -81,3 +81,79 @@ def compute_diff(
             tier=classify_tier(tool),
         ))
     return diffs
+
+
+def display_diff(diffs: list[ToolDiff], *, console: Console | None = None) -> None:
+    """Print diff grouped by tier using rich tables."""
+    _console = console or Console()
+    if not diffs:
+        _console.print("No changes detected.")
+        return
+
+    for tier, label, style in [
+        ("safe", "SAFE", "green"),
+        ("review", "REVIEW", "yellow"),
+        ("breaking", "BREAKING", "red"),
+    ]:
+        tier_diffs = [d for d in diffs if d.tier == tier]
+        if not tier_diffs:
+            continue
+
+        table = Table(
+            title=f"{label} — {len(tier_diffs)} tool{'s' if len(tier_diffs) != 1 else ''}",
+            title_style=style,
+            box=box.SIMPLE,
+            show_header=True,
+        )
+        table.add_column("Tool", style="bold")
+        table.add_column("Source")
+        table.add_column("Change")
+
+        for d in tier_diffs:
+            version_str = f"{d.current_version or 'unpinned'} → {d.new_version}"
+            table.add_row(d.tool_id, d.source, version_str)
+            for bc in d.breaking_changes:
+                table.add_row("", "", f"! {bc}")
+            for sa in d.security_advisories:
+                table.add_row("", "", f"⚠ {sa}")
+            if d.deprecation_status in ("deprecated", "archived"):
+                table.add_row("", "", f"! {d.deprecation_status.upper()}")
+            if d.notes:
+                table.add_row("", "", d.notes)
+
+        _console.print(table)
+
+
+def cmd_check(stack_path: Path, *, console: Console | None = None) -> None:
+    """Show stack summary: tool count, pinned count, last snapshot, last validated."""
+    _console = console or Console()
+    cfg = read_toml(stack_path)
+
+    total = 0
+    pinned = 0
+    for section in ("base_tools", "mcp_servers", "per_project"):
+        for tool_cfg in cfg.get(section, {}).values():
+            total += 1
+            if tool_cfg.get("pinned_version"):
+                pinned += 1
+
+    _console.print(f"Tools: {total} total, {pinned} pinned")
+
+    last_validated = cfg.get("meta", {}).get("last_validated", "")
+    _console.print(f"Last validated: {last_validated or 'never'}")
+
+    snapshot_dir_str = cfg.get("paths", {}).get("snapshot_dir", "")
+    if not snapshot_dir_str:
+        _console.print("Last snapshot: snapshot_dir not configured")
+        return
+
+    snapshot_dir = Path(snapshot_dir_str)
+    if not snapshot_dir.exists():
+        _console.print("Last snapshot: none (directory does not exist)")
+        return
+
+    zips = sorted(snapshot_dir.glob("*.zip"), key=lambda p: p.name)
+    if zips:
+        _console.print(f"Last snapshot: {zips[-1].name}")
+    else:
+        _console.print("Last snapshot: none")

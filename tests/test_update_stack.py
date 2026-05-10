@@ -1,4 +1,8 @@
-from scripts.update_stack import ToolDiff, classify_tier, compute_diff
+import io
+import pytest
+from rich.console import Console
+from scripts.lib.config import write_toml
+from scripts.update_stack import ToolDiff, classify_tier, compute_diff, display_diff, cmd_check
 
 
 # --- classify_tier ---
@@ -133,3 +137,149 @@ def test_compute_diff_empty_stack_returns_empty():
 def test_compute_diff_empty_research_returns_empty():
     stack = _make_stack()
     assert compute_diff(stack, {"tools": []}) == []
+
+
+# --- display_diff ---
+
+def _make_console():
+    buf = io.StringIO()
+    return Console(file=buf, no_color=True, width=120), buf
+
+
+def _make_diff(tool_id="mytool", section="base_tools", source="npm",
+               current=None, new="1.0.0", tier="safe",
+               breaking=None, status="active", advisories=None, notes=""):
+    return ToolDiff(
+        tool_id=tool_id, section=section, source=source,
+        current_version=current, new_version=new,
+        breaking_changes=breaking or [],
+        deprecation_status=status,
+        security_advisories=advisories or [],
+        notes=notes,
+        tier=tier,
+    )
+
+
+def test_display_diff_empty_shows_no_changes():
+    console, buf = _make_console()
+    display_diff([], console=console)
+    assert "No changes" in buf.getvalue()
+
+
+def test_display_diff_safe_tier_shows_tool():
+    console, buf = _make_console()
+    display_diff([_make_diff(tool_id="context7", tier="safe")], console=console)
+    out = buf.getvalue()
+    assert "context7" in out
+    assert "SAFE" in out
+
+
+def test_display_diff_review_tier_shows_notes():
+    console, buf = _make_console()
+    diff = _make_diff(tier="review", notes="API changed slightly")
+    display_diff([diff], console=console)
+    out = buf.getvalue()
+    assert "REVIEW" in out
+    assert "API changed slightly" in out
+
+
+def test_display_diff_breaking_tier_shows_breaking_changes():
+    console, buf = _make_console()
+    diff = _make_diff(tier="breaking", breaking=["Removed X"])
+    display_diff([diff], console=console)
+    out = buf.getvalue()
+    assert "BREAKING" in out
+    assert "Removed X" in out
+
+
+def test_display_diff_breaking_shows_deprecated():
+    console, buf = _make_console()
+    diff = _make_diff(tier="breaking", status="deprecated")
+    display_diff([diff], console=console)
+    assert "DEPRECATED" in buf.getvalue()
+
+
+def test_display_diff_version_change_shown():
+    console, buf = _make_console()
+    diff = _make_diff(current="0.9.0", new="1.0.0")
+    display_diff([diff], console=console)
+    out = buf.getvalue()
+    assert "0.9.0" in out
+    assert "1.0.0" in out
+
+
+def test_display_diff_unpinned_shown():
+    console, buf = _make_console()
+    diff = _make_diff(current=None, new="1.0.0")
+    display_diff([diff], console=console)
+    assert "unpinned" in buf.getvalue()
+
+
+# --- cmd_check ---
+
+def _write_stack(path, tools_count=3, pinned_count=1, last_validated="2026-05-10T00:00:00Z"):
+    base_tools = {}
+    for i in range(tools_count):
+        cfg = {"source": "npm", "package": f"pkg{i}"}
+        if i < pinned_count:
+            cfg["pinned_version"] = f"1.{i}.0"
+        base_tools[f"tool{i}"] = cfg
+    write_toml(path, {
+        "meta": {"schema_version": "1", "created": "2026-05-10T00:00:00Z",
+                 "last_validated": last_validated},
+        "paths": {"snapshot_dir": "", "tolaria_vault": ""},
+        "github": {"private_snapshot_repo": "snapshots"},
+        "base_tools": base_tools,
+        "mcp_servers": {},
+        "per_project": {},
+    })
+
+
+def test_cmd_check_shows_tool_count(tmp_path):
+    stack_path = tmp_path / "stack.toml"
+    _write_stack(stack_path, tools_count=3, pinned_count=1)
+    console, buf = _make_console()
+    cmd_check(stack_path, console=console)
+    out = buf.getvalue()
+    assert "3" in out
+    assert "1" in out
+
+
+def test_cmd_check_shows_last_validated(tmp_path):
+    stack_path = tmp_path / "stack.toml"
+    _write_stack(stack_path, last_validated="2026-05-09T12:00:00Z")
+    console, buf = _make_console()
+    cmd_check(stack_path, console=console)
+    assert "2026-05-09" in buf.getvalue()
+
+
+def test_cmd_check_no_last_validated_shows_never(tmp_path):
+    stack_path = tmp_path / "stack.toml"
+    _write_stack(stack_path, last_validated="")
+    console, buf = _make_console()
+    cmd_check(stack_path, console=console)
+    assert "never" in buf.getvalue()
+
+
+def test_cmd_check_shows_last_snapshot(tmp_path):
+    stack_path = tmp_path / "stack.toml"
+    snap_dir = tmp_path / "snaps"
+    snap_dir.mkdir()
+    (snap_dir / "2026-05-10_12-00-00_manual.zip").touch()
+    write_toml(stack_path, {
+        "meta": {"schema_version": "1", "created": "", "last_validated": ""},
+        "paths": {"snapshot_dir": str(snap_dir), "tolaria_vault": ""},
+        "github": {"private_snapshot_repo": "snaps"},
+        "base_tools": {}, "mcp_servers": {}, "per_project": {},
+    })
+    console, buf = _make_console()
+    cmd_check(stack_path, console=console)
+    assert "2026-05-10_12-00-00_manual.zip" in buf.getvalue()
+
+
+def test_cmd_check_no_snapshot_dir_configured(tmp_path):
+    stack_path = tmp_path / "stack.toml"
+    _write_stack(stack_path)
+    console, buf = _make_console()
+    cmd_check(stack_path, console=console)
+    assert "not configured" in buf.getvalue()
