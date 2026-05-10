@@ -2,7 +2,7 @@ import json
 import zipfile
 import pytest
 from pathlib import Path
-from scripts.snapshot import create_snapshot, prune_snapshots, _snapshot_name
+from scripts.snapshot import create_snapshot, prune_snapshots, _snapshot_name, restore_snapshot
 
 
 # --- _snapshot_name ---
@@ -171,9 +171,6 @@ def test_pruning_noop_when_under_limit(tmp_path):
     assert len(list(snapshot_dir.glob("*.zip"))) == 3
 
 
-from scripts.snapshot import restore_snapshot
-
-
 def test_restore_extracts_files(tmp_path, monkeypatch):
     fake_claude = tmp_path / ".claude"
     fake_claude.mkdir()
@@ -225,10 +222,9 @@ def test_restore_atomically_rolls_back_on_checksum_failure(tmp_path, monkeypatch
     # Create a corrupt zip: file content does not match manifest hash
     corrupt_zip = snapshot_dir / "2000-01-01_00-00-00_manual.zip"
     snapshot_dir.mkdir(parents=True, exist_ok=True)
-    import zipfile as _zf, json as _json
-    with _zf.ZipFile(corrupt_zip, "w") as zf:
+    with zipfile.ZipFile(corrupt_zip, "w") as zf:
         zf.writestr(".claude/settings.json", b'{"tampered": true}')
-        zf.writestr("SNAPSHOT_MANIFEST.json", _json.dumps(
+        zf.writestr("SNAPSHOT_MANIFEST.json", json.dumps(
             {".claude/settings.json": "0" * 64}  # wrong hash
         ))
 
@@ -251,8 +247,7 @@ def test_restore_raises_if_manifest_missing(tmp_path, monkeypatch):
     snapshot_dir.mkdir(parents=True, exist_ok=True)
 
     no_manifest_zip = snapshot_dir / "2000-01-01_00-00-01_manual.zip"
-    import zipfile as _zf
-    with _zf.ZipFile(no_manifest_zip, "w") as zf:
+    with zipfile.ZipFile(no_manifest_zip, "w") as zf:
         zf.writestr(".claude/settings.json", b'{}')
     # No SNAPSHOT_MANIFEST.json written
 

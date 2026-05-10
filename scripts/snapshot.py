@@ -151,6 +151,26 @@ def restore_snapshot(zip_path: Path, snapshot_dir: Path) -> None:
                     bak.rename(claude_dir)
                 raise
 
+        # Atomic restore of opencode config dir
+        opencode_dir = opencode_config_dir()
+        staged_opencode = staging / opencode_dir.name
+        if staged_opencode.exists():
+            bak = opencode_dir.parent / f"{opencode_dir.name}.bak"
+            if opencode_dir.exists():
+                if bak.exists():
+                    shutil.rmtree(bak)
+                opencode_dir.rename(bak)
+            try:
+                shutil.copytree(staged_opencode, opencode_dir)
+                if bak.exists():
+                    shutil.rmtree(bak)
+            except Exception:
+                if bak.exists():
+                    if opencode_dir.exists():
+                        shutil.rmtree(opencode_dir)
+                    bak.rename(opencode_dir)
+                raise
+
     finally:
         if staging.exists():
             shutil.rmtree(staging)
