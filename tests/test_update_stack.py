@@ -327,6 +327,17 @@ def test_cmd_snapshot_no_snapshot_dir_raises(tmp_path):
         cmd_snapshot(stack_path)
 
 
+def test_cmd_snapshot_passes_tolaria_vault(tmp_path, mocker):
+    snap_dir = tmp_path / "snaps"
+    vault = tmp_path / "vault"
+    stack_path = tmp_path / "stack.toml"
+    _write_minimal_stack(stack_path, snapshot_dir=str(snap_dir), tolaria_vault=str(vault))
+    mock = mocker.patch("scripts.update_stack.create_snapshot",
+                        return_value=snap_dir / "x.zip")
+    cmd_snapshot(stack_path)
+    mock.assert_called_once_with(snap_dir, reason="manual", tag="", tolaria_vault=vault)
+
+
 # --- cmd_snapshots_list ---
 
 def test_cmd_snapshots_list_shows_zips(tmp_path):
@@ -359,6 +370,14 @@ def test_cmd_snapshots_list_no_dir_configured(tmp_path):
     console, buf = _make_console()
     cmd_snapshots_list(stack_path, console=console)
     assert "not configured" in buf.getvalue()
+
+
+def test_cmd_snapshots_list_dir_does_not_exist(tmp_path):
+    stack_path = tmp_path / "stack.toml"
+    _write_minimal_stack(stack_path, snapshot_dir=str(tmp_path / "missing"))
+    console, buf = _make_console()
+    cmd_snapshots_list(stack_path, console=console)
+    assert "does not exist" in buf.getvalue()
 
 
 # --- cmd_snapshots_prune ---
