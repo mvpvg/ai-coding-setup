@@ -30,12 +30,16 @@ Run an AI-guided installation of the curated AI coding stack into the current ma
      - Ask the user for the value
      - Write to `.env` (creating `.gitignore` entry if missing)
 
-5. **Write global CLAUDE.md:**
+5. **Write CLAUDE.md files:**
    ```bash
+   # Write global ~/.claude/CLAUDE.md (applies to every project)
    python setup_helpers.py apply-template global_claude_md --project-dir ~
+
+   # Overwrite the installer-mode CLAUDE.md in this folder with the standard one
+   cp templates/claude_md/global.md CLAUDE.md
    ```
-   This writes `~/.claude/CLAUDE.md` with the full agent rules.
    If `~/.claude/CLAUDE.md` already exists, ask the user before overwriting.
+   The project `CLAUDE.md` is always overwritten — the installer-mode version is replaced with the standard agent rules.
 
 6. **Optional hooks:** Ask: "Install git-guardrails hooks? Blocks dangerous git commands (force push, reset --hard) with confirmation." If yes:
    ```bash
@@ -62,10 +66,11 @@ Run an AI-guided installation of the curated AI coding stack into the current ma
      ```bash
      ARCHIVE=_archive/bootstrap_$(date +%Y%m%d_%H%M%S)
      mkdir -p "$ARCHIVE"
-     for item in templates tolaria_vault prompts setup_helpers.py stack.toml requirements.txt README.md AGENTS.md CLAUDE.md; do
+     for item in templates tolaria_vault prompts setup_helpers.py stack.toml requirements.txt README.md AGENTS.md; do
        [ -e "$item" ] && mv "$item" "$ARCHIVE/"
      done
      ```
+   - Note: `CLAUDE.md` is **not** archived — it was already overwritten with the standard template in step 5.
 
 10. **Done.** Tell the user:
     - Tools installed and global `~/.claude/CLAUDE.md` written
