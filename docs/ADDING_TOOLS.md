@@ -76,4 +76,4 @@ Add conflicting plugins to `[conflicting_plugins]`:
 my_conflict = { id = "plugin-id", reason = "Explain why this conflicts" }
 ```
 
-`bootstrap_project.py` will warn users who have these plugins enabled.
+The `/setup-stack` installer will warn users who have these plugins enabled.
