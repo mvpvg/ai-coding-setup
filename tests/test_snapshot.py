@@ -169,3 +169,92 @@ def test_pruning_noop_when_under_limit(tmp_path):
     deleted = prune_snapshots(snapshot_dir)
     assert deleted == []
     assert len(list(snapshot_dir.glob("*.zip"))) == 3
+
+
+from scripts.snapshot import restore_snapshot
+
+
+def test_restore_extracts_files(tmp_path, monkeypatch):
+    fake_claude = tmp_path / ".claude"
+    fake_claude.mkdir()
+    (fake_claude / "settings.json").write_bytes(b'{"original": true}')
+
+    monkeypatch.setattr("scripts.snapshot.claude_config_dir", lambda: fake_claude)
+    monkeypatch.setattr("scripts.snapshot.opencode_config_dir", lambda: tmp_path / ".opencode_nx")
+
+    snapshot_dir = tmp_path / "snapshots"
+    zip_path = create_snapshot(snapshot_dir, reason="manual")
+
+    # Overwrite the file
+    (fake_claude / "settings.json").write_bytes(b'{"modified": true}')
+
+    restore_snapshot(zip_path, snapshot_dir)
+
+    assert (fake_claude / "settings.json").read_bytes() == b'{"original": true}'
+
+
+def test_restore_creates_pre_restore_snapshot(tmp_path, monkeypatch):
+    fake_claude = tmp_path / ".claude"
+    fake_claude.mkdir()
+    (fake_claude / "settings.json").write_bytes(b'{"v": 1}')
+
+    monkeypatch.setattr("scripts.snapshot.claude_config_dir", lambda: fake_claude)
+    monkeypatch.setattr("scripts.snapshot.opencode_config_dir", lambda: tmp_path / ".opencode_nx")
+
+    snapshot_dir = tmp_path / "snapshots"
+    zip_path = create_snapshot(snapshot_dir, reason="manual")
+
+    initial_count = len(list(snapshot_dir.glob("*.zip")))
+    restore_snapshot(zip_path, snapshot_dir)
+
+    # At least one more snapshot (pre-restore) was created
+    final_count = len(list(snapshot_dir.glob("*.zip")))
+    assert final_count > initial_count or final_count == 5  # may be pruned to 5
+
+
+def test_restore_atomically_rolls_back_on_checksum_failure(tmp_path, monkeypatch):
+    fake_claude = tmp_path / ".claude"
+    fake_claude.mkdir()
+    (fake_claude / "settings.json").write_bytes(b'{"original": true}')
+
+    monkeypatch.setattr("scripts.snapshot.claude_config_dir", lambda: fake_claude)
+    monkeypatch.setattr("scripts.snapshot.opencode_config_dir", lambda: tmp_path / ".opencode_nx")
+
+    snapshot_dir = tmp_path / "snapshots"
+
+    # Create a corrupt zip: file content does not match manifest hash
+    corrupt_zip = snapshot_dir / "2000-01-01_00-00-00_manual.zip"
+    snapshot_dir.mkdir(parents=True, exist_ok=True)
+    import zipfile as _zf, json as _json
+    with _zf.ZipFile(corrupt_zip, "w") as zf:
+        zf.writestr(".claude/settings.json", b'{"tampered": true}')
+        zf.writestr("SNAPSHOT_MANIFEST.json", _json.dumps(
+            {".claude/settings.json": "0" * 64}  # wrong hash
+        ))
+
+    with pytest.raises(Exception):
+        restore_snapshot(corrupt_zip, snapshot_dir)
+
+    # Original file must be intact after rollback
+    assert (fake_claude / "settings.json").read_bytes() == b'{"original": true}'
+
+
+def test_restore_raises_if_manifest_missing(tmp_path, monkeypatch):
+    fake_claude = tmp_path / ".claude"
+    fake_claude.mkdir()
+    (fake_claude / "settings.json").write_bytes(b'{}')
+
+    monkeypatch.setattr("scripts.snapshot.claude_config_dir", lambda: fake_claude)
+    monkeypatch.setattr("scripts.snapshot.opencode_config_dir", lambda: tmp_path / ".opencode_nx")
+
+    snapshot_dir = tmp_path / "snapshots"
+    snapshot_dir.mkdir(parents=True, exist_ok=True)
+
+    no_manifest_zip = snapshot_dir / "2000-01-01_00-00-01_manual.zip"
+    import zipfile as _zf
+    with _zf.ZipFile(no_manifest_zip, "w") as zf:
+        zf.writestr(".claude/settings.json", b'{}')
+    # No SNAPSHOT_MANIFEST.json written
+
+    with pytest.raises(ValueError, match="SNAPSHOT_MANIFEST.json"):
+        restore_snapshot(no_manifest_zip, snapshot_dir)

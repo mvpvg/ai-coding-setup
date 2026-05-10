@@ -103,3 +103,54 @@ def prune_snapshots(snapshot_dir: Path, keep: int = MAX_SNAPSHOTS) -> list[Path]
     for p in to_delete:
         p.unlink()
     return to_delete
+
+
+def restore_snapshot(zip_path: Path, snapshot_dir: Path) -> None:
+    """Restore a snapshot. Creates pre-restore snapshot first for safety.
+    Validates checksums before touching live directories. Atomically replaces ~/.claude/."""
+    # Safety snapshot of current state
+    create_snapshot(snapshot_dir, reason="pre-restore")
+
+    staging = zip_path.parent / f".staging_{zip_path.stem}"
+    if staging.exists():
+        shutil.rmtree(staging)
+    staging.mkdir(parents=True)
+
+    try:
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            zf.extractall(staging)
+
+        manifest_path = staging / "SNAPSHOT_MANIFEST.json"
+        if not manifest_path.exists():
+            raise ValueError(f"SNAPSHOT_MANIFEST.json missing from {zip_path.name}")
+
+        manifest: dict[str, str] = json.loads(manifest_path.read_text())
+        for archive_name, expected_hash in manifest.items():
+            extracted = staging / archive_name
+            if not extracted.exists():
+                raise ValueError(f"File '{archive_name}' in manifest but not in zip")
+            verify_file(extracted, expected_hash)
+
+        # Atomic restore of ~/.claude/
+        claude_dir = claude_config_dir()
+        staged_claude = staging / ".claude"
+        if staged_claude.exists():
+            bak = claude_dir.parent / ".claude.bak"
+            if claude_dir.exists():
+                if bak.exists():
+                    shutil.rmtree(bak)
+                claude_dir.rename(bak)
+            try:
+                shutil.copytree(staged_claude, claude_dir)
+                if bak.exists():
+                    shutil.rmtree(bak)
+            except Exception:
+                if bak.exists():
+                    if claude_dir.exists():
+                        shutil.rmtree(claude_dir)
+                    bak.rename(claude_dir)
+                raise
+
+    finally:
+        if staging.exists():
+            shutil.rmtree(staging)
