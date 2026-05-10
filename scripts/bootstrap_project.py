@@ -9,7 +9,6 @@ from typing import Any
 
 from scripts.lib.config import read_toml, write_toml
 from scripts.lib.platform_paths import (
-    app_config_dir,
     claude_config_dir,
     hook_executable_extension,
 )
@@ -86,24 +85,16 @@ def _create_snapshot_repo(repo_name: str) -> str:
 
 def _apply_first_time_setup(
     stack_path: Path,
-    snapshot_dir: Path,
-    tolaria_vault: Path | None,
 ) -> None:
-    """Non-interactive first-time setup: validates gh, creates snapshot repo,
-    updates stack.toml with snapshot_dir and tolaria_vault paths, and creates snapshot directory."""
+    """Non-interactive first-time setup: validates gh CLI auth and creates snapshot repo."""
     cfg = read_toml(stack_path)
 
     _validate_gh_cli()
 
-    repo_name = cfg.get("github", {}).get("private_snapshot_repo", "dev-stack-snapshots")
+    repo_name = "dev-stack-snapshots"
     _create_snapshot_repo(repo_name)
 
-    cfg["paths"]["snapshot_dir"] = str(snapshot_dir)
-    if tolaria_vault is not None:
-        cfg["paths"]["tolaria_vault"] = str(tolaria_vault)
     write_toml(stack_path, cfg)
-
-    snapshot_dir.mkdir(parents=True, exist_ok=True)
 
 
 def run_new_project(
@@ -162,13 +153,6 @@ def run_first_time(stack_path: Path) -> None:
     print("=== Dev Stack First-Time Setup ===")
     print()
 
-    default_snapshot = str(app_config_dir() / "snapshots")
-    snapshot_input = input(f"Snapshot directory [{default_snapshot}]: ").strip()
-    snapshot_dir = Path(snapshot_input) if snapshot_input else Path(default_snapshot)
-
-    tolaria_input = input("Tolaria vault path (press Enter to skip): ").strip()
-    tolaria_vault = Path(tolaria_input) if tolaria_input else None
-
     claude_settings = claude_config_dir() / "settings.json"
     if claude_settings.exists():
         settings = json.loads(claude_settings.read_text(encoding="utf-8"))
@@ -180,10 +164,7 @@ def run_first_time(stack_path: Path) -> None:
             print("\nPlease disable these plugins before continuing.")
             return
 
-    _apply_first_time_setup(stack_path, snapshot_dir, tolaria_vault)
-    print(f"\n✓ Snapshot dir: {snapshot_dir}")
-    if tolaria_vault is not None:
-        print(f"✓ Tolaria vault: {tolaria_vault}")
+    _apply_first_time_setup(stack_path)
     print("\nSetup complete! Run with --resume <project-dir> to apply templates.")
 
 

@@ -3,13 +3,6 @@ schema_version = "1"
 created = "2026-05-10T00:00:00Z"
 last_validated = ""
 
-[paths]
-snapshot_dir = ""
-tolaria_vault = ""
-
-[github]
-private_snapshot_repo = "dev-stack-snapshots"
-
 [runtime]
 primary_os = "auto"
 package_manager = "pnpm"
@@ -47,9 +40,6 @@ pacquet = { id = "pacquet", reason = "Alpha; revisit when pnpm officially adopts
 lightpanda = { id = "lightpanda-io-browser", reason = "Obscura is more mature" }
 
 [security]
-audit_log_enabled = true
-audit_log_path = "~/.claude/audit.log"
-audit_log_push_to_repo = true
 allowlisted_domains = [
     "registry.npmjs.org",
     "pypi.org",
@@ -62,8 +52,3 @@ allowlisted_domains = [
     "api.github.com",
 ]
 require_checksum_for_binaries = true
-
-[snapshots]
-retention_count = 5
-push_to_github = true
-zip_naming = "{timestamp}_{reason}{tag}.zip"

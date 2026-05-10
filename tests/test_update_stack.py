@@ -232,8 +232,6 @@ def _write_stack(path, tools_count=3, pinned_count=1, last_validated="2026-05-10
     write_toml(path, {
         "meta": {"schema_version": "1", "created": "2026-05-10T00:00:00Z",
                  "last_validated": last_validated},
-        "paths": {"snapshot_dir": "", "tolaria_vault": ""},
-        "github": {"private_snapshot_repo": "snapshots"},
         "base_tools": base_tools,
         "mcp_servers": {},
         "per_project": {},
@@ -293,15 +291,13 @@ def _make_research_file(tmp_path, tool_id="context7", version="1.5.2",
     return f
 
 
-def _write_stack_with_tool(path, snap_dir, tool_id="context7",
+def _write_stack_with_tool(path, snap_dir=None, tool_id="context7",
                             section="mcp_servers", pinned=None, tolaria=""):
     cfg = {"source": "npm", "package": f"@pkg/{tool_id}"}
     if pinned is not None:
         cfg["pinned_version"] = pinned
     write_toml(path, {
         "meta": {"schema_version": "1", "created": "", "last_validated": ""},
-        "paths": {"snapshot_dir": str(snap_dir), "tolaria_vault": tolaria},
-        "github": {"private_snapshot_repo": "snapshots"},
         "base_tools": {},
         "mcp_servers": {tool_id: cfg} if section == "mcp_servers" else {},
         "per_project": {},
