@@ -634,3 +634,10 @@ def test_cmd_restore_neither_latest_nor_timestamp_raises(tmp_path, mocker):
     mocker.patch("scripts.update_stack.restore_snapshot")
     with pytest.raises(RuntimeError, match="Specify --latest"):
         cmd_restore(stack_path)
+
+
+def test_cmd_restore_missing_dir_raises(tmp_path):
+    stack_path = tmp_path / "stack.toml"
+    _write_minimal_stack(stack_path, snapshot_dir=str(tmp_path / "missing"))
+    with pytest.raises(RuntimeError, match="does not exist"):
+        cmd_restore(stack_path, latest=True)

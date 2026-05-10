@@ -291,6 +291,8 @@ def cmd_restore(
     if not snapshot_dir_str:
         raise RuntimeError("snapshot_dir not configured in stack.toml")
     snapshot_dir = Path(snapshot_dir_str)
+    if not snapshot_dir.exists():
+        raise RuntimeError(f"Snapshot directory does not exist: {snapshot_dir}")
     zips = sorted(snapshot_dir.glob("*.zip"), key=lambda p: p.name)
 
     if not zips:
