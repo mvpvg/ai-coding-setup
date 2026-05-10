@@ -266,16 +266,6 @@ def test_cmd_check_no_last_validated_shows_never(tmp_path):
     assert "never" in buf.getvalue()
 
 
-
-def _write_minimal_stack(path, snapshot_dir="", tolaria_vault=""):
-    write_toml(path, {
-        "meta": {"schema_version": "1", "created": "", "last_validated": ""},
-        "paths": {"snapshot_dir": snapshot_dir, "tolaria_vault": tolaria_vault},
-        "github": {"private_snapshot_repo": "snapshots"},
-        "base_tools": {}, "mcp_servers": {}, "per_project": {},
-    })
-
-
 # --- cmd_update ---
 
 def _make_research_file(tmp_path, tool_id="context7", version="1.5.2",
@@ -319,10 +309,8 @@ def _write_stack_with_tool(path, snap_dir, tool_id="context7",
 
 
 def test_cmd_update_no_apply_shows_diff(tmp_path):
-    snap_dir = tmp_path / "snaps"
-    snap_dir.mkdir()
     stack_path = tmp_path / "stack.toml"
-    _write_stack_with_tool(stack_path, snap_dir)
+    _write_stack_with_tool(stack_path, tmp_path)
     research_path = _make_research_file(tmp_path)
     console, buf = _make_console()
     cmd_update(stack_path, research_path, apply=False, console=console)
@@ -332,10 +320,8 @@ def test_cmd_update_no_apply_shows_diff(tmp_path):
 
 
 def test_cmd_update_no_apply_does_not_modify_stack(tmp_path):
-    snap_dir = tmp_path / "snaps"
-    snap_dir.mkdir()
     stack_path = tmp_path / "stack.toml"
-    _write_stack_with_tool(stack_path, snap_dir)
+    _write_stack_with_tool(stack_path, tmp_path)
     research_path = _make_research_file(tmp_path)
     cmd_update(stack_path, research_path, apply=False)
     updated = read_toml(stack_path)
@@ -343,10 +329,8 @@ def test_cmd_update_no_apply_does_not_modify_stack(tmp_path):
 
 
 def test_cmd_update_no_apply_no_changes(tmp_path):
-    snap_dir = tmp_path / "snaps"
-    snap_dir.mkdir()
     stack_path = tmp_path / "stack.toml"
-    _write_stack_with_tool(stack_path, snap_dir, pinned="1.5.2")
+    _write_stack_with_tool(stack_path, tmp_path, pinned="1.5.2")
     research_path = _make_research_file(tmp_path, version="1.5.2")
     console, buf = _make_console()
     cmd_update(stack_path, research_path, apply=False, console=console)
@@ -354,10 +338,8 @@ def test_cmd_update_no_apply_no_changes(tmp_path):
 
 
 def test_cmd_update_apply_writes_pinned_version(tmp_path):
-    snap_dir = tmp_path / "snaps"
-    snap_dir.mkdir()
     stack_path = tmp_path / "stack.toml"
-    _write_stack_with_tool(stack_path, snap_dir)
+    _write_stack_with_tool(stack_path, tmp_path)
     research_path = _make_research_file(tmp_path, version="1.5.2")
     cmd_update(stack_path, research_path, apply=True)
     updated = read_toml(stack_path)

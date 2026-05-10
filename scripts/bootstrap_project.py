@@ -90,7 +90,7 @@ def _apply_first_time_setup(
     tolaria_vault: Path | None,
 ) -> None:
     """Non-interactive first-time setup: validates gh, creates snapshot repo,
-    updates stack.toml, creates initial snapshot."""
+    updates stack.toml with snapshot_dir and tolaria_vault paths, and creates snapshot directory."""
     cfg = read_toml(stack_path)
 
     _validate_gh_cli()
