@@ -142,6 +142,7 @@ def test_build_release_creates_zip(tmp_path):
     assert "setup_helpers.py" in names
     assert "prompts/setup-stack.md" in names
     assert ".claude/commands/setup-stack.md" in names
+    assert ".opencode/commands/setup-stack.md" in names
     assert "CLAUDE.md" in names
     assert "AGENTS.md" in names
     assert "README.md" in names

@@ -186,6 +186,11 @@ def build_release(version: str, output_dir: Path, repo_root: Path) -> Path:
         commands_dst.mkdir(parents=True)
         shutil.copy2(setup_stack_src, commands_dst / "setup-stack.md")
 
+        # Register /setup-stack as an OpenCode slash command
+        opencode_commands_dst = staging / ".opencode" / "commands"
+        opencode_commands_dst.mkdir(parents=True)
+        shutil.copy2(setup_stack_src, opencode_commands_dst / "setup-stack.md")
+
         # Templates — only global.md and hooks
         templates_src = repo_root / "templates"
         if templates_src.exists():
