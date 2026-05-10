@@ -1,12 +1,13 @@
 import io
 import json
 import pytest
+from pathlib import Path
 from rich.console import Console
 from scripts.lib.config import read_toml, write_toml
 from scripts.update_stack import (
     ToolDiff, classify_tier, compute_diff, display_diff, cmd_check,
     cmd_snapshot, cmd_snapshots_list, cmd_snapshots_prune,
-    cmd_update, cmd_restore,
+    cmd_update, cmd_restore, cmd_audit_tail, cmd_audit_push,
 )
 
 
@@ -634,6 +635,129 @@ def test_cmd_restore_neither_latest_nor_timestamp_raises(tmp_path, mocker):
     mocker.patch("scripts.update_stack.restore_snapshot")
     with pytest.raises(RuntimeError, match="Specify --latest"):
         cmd_restore(stack_path)
+
+
+# --- cmd_audit_tail ---
+
+def test_cmd_audit_tail_shows_entries(tmp_path):
+    log_path = tmp_path / "audit.log"
+    log_path.write_text(
+        '{"ts":"2026-05-10T00:00:00Z","event":"tool_use","tool":"Bash","command":"ls","cwd":"/"}\n',
+        encoding="utf-8",
+    )
+    console, buf = _make_console()
+    cmd_audit_tail(n=10, log_path=log_path, console=console)
+    out = buf.getvalue()
+    assert "tool_use" in out
+    assert "Bash" in out
+
+
+def test_cmd_audit_tail_empty_log(tmp_path):
+    log_path = tmp_path / "audit.log"
+    console, buf = _make_console()
+    cmd_audit_tail(n=10, log_path=log_path, console=console)
+    assert "No audit" in buf.getvalue()
+
+
+def test_cmd_audit_tail_respects_n(tmp_path):
+    log_path = tmp_path / "audit.log"
+    lines = [f'{{"ts":"t","event":"e{i}","tool":"t","command":"c","cwd":"/"}}\n'
+             for i in range(10)]
+    log_path.write_text("".join(lines), encoding="utf-8")
+    console, buf = _make_console()
+    cmd_audit_tail(n=3, log_path=log_path, console=console)
+    out = buf.getvalue()
+    assert "e9" in out
+    assert "e0" not in out
+
+
+# --- cmd_audit_push ---
+
+def _write_stack_with_audit(path, snap_dir, audit_log_path="~/.claude/audit.log", repo="dev-stack-snapshots"):
+    write_toml(path, {
+        "meta": {"schema_version": "1", "created": "", "last_validated": ""},
+        "paths": {"snapshot_dir": str(snap_dir), "tolaria_vault": ""},
+        "github": {"private_snapshot_repo": repo},
+        "security": {"audit_log_path": audit_log_path},
+        "base_tools": {}, "mcp_servers": {}, "per_project": {},
+    })
+
+
+def test_cmd_audit_push_calls_gh_api(tmp_path, mocker):
+    snap_dir = tmp_path / "snaps"
+    snap_dir.mkdir()
+    stack_path = tmp_path / "stack.toml"
+    log_path = tmp_path / "audit.log"
+    log_path.write_text("entry\n", encoding="utf-8")
+    _write_stack_with_audit(stack_path, snap_dir)
+
+    user_mock = mocker.MagicMock()
+    user_mock.returncode = 0
+    user_mock.stdout = b"testuser\n"
+    sha_mock = mocker.MagicMock()
+    sha_mock.returncode = 1  # file does not exist yet
+    put_mock = mocker.MagicMock()
+    put_mock.returncode = 0
+
+    mocker.patch(
+        "scripts.update_stack.safe_run",
+        side_effect=[user_mock, sha_mock, put_mock],
+    )
+
+    console, buf = _make_console()
+    cmd_audit_push(stack_path, log_path=log_path, console=console)
+
+    assert "testuser/dev-stack-snapshots" in buf.getvalue()
+
+
+def test_cmd_audit_push_no_log_file(tmp_path, mocker):
+    snap_dir = tmp_path / "snaps"
+    snap_dir.mkdir()
+    stack_path = tmp_path / "stack.toml"
+    _write_stack_with_audit(stack_path, snap_dir)
+    log_path = tmp_path / "nonexistent.log"
+
+    user_mock = mocker.MagicMock()
+    user_mock.returncode = 0
+    user_mock.stdout = b"testuser\n"
+    mocker.patch("scripts.update_stack.safe_run", return_value=user_mock)
+
+    console, buf = _make_console()
+    cmd_audit_push(stack_path, log_path=log_path, console=console)
+    assert "nothing to push" in buf.getvalue().lower()
+
+
+def test_cmd_audit_push_includes_sha_when_file_exists(tmp_path, mocker):
+    snap_dir = tmp_path / "snaps"
+    snap_dir.mkdir()
+    stack_path = tmp_path / "stack.toml"
+    log_path = tmp_path / "audit.log"
+    log_path.write_text("data\n", encoding="utf-8")
+    _write_stack_with_audit(stack_path, snap_dir)
+
+    user_mock = mocker.MagicMock()
+    user_mock.returncode = 0
+    user_mock.stdout = b"testuser\n"
+    sha_mock = mocker.MagicMock()
+    sha_mock.returncode = 0
+    sha_mock.stdout = b'"abc123"\n'  # existing file SHA
+    put_mock = mocker.MagicMock()
+    put_mock.returncode = 0
+
+    safe_run_mock = mocker.patch(
+        "scripts.update_stack.safe_run",
+        side_effect=[user_mock, sha_mock, put_mock],
+    )
+    mocker.patch("scripts.update_stack.os.unlink")  # prevent deletion so we can read tmpfile
+
+    cmd_audit_push(stack_path, log_path=log_path)
+
+    # Verify the PUT call's input file contains the sha field
+    put_call_args = safe_run_mock.call_args_list[2]
+    input_file = put_call_args.args[0][-1]  # last arg is the temp file path
+    payload = json.loads(Path(input_file).read_text())
+    assert payload.get("sha") == "abc123"
+    Path(input_file).unlink(missing_ok=True)
 
 
 def test_cmd_restore_missing_dir_raises(tmp_path):
