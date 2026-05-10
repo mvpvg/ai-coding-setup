@@ -69,6 +69,11 @@ def _check_postgres_conn_string() -> bool:
 
 
 def _templates_root() -> Path:
+    # In the release zip, setup_helpers.py sits alongside templates/.
+    # In the repo, it lives under scripts/ — step up one level.
+    candidate = Path(__file__).parent / "templates"
+    if candidate.exists():
+        return candidate
     return Path(__file__).parent.parent / "templates"
 
 
