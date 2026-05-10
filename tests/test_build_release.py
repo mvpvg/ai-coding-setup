@@ -114,6 +114,7 @@ def test_build_release_creates_zip(tmp_path):
     assert "stack.toml" in names
     assert "setup_helpers.py" in names
     assert "prompts/setup-stack.md" in names
+    assert ".claude/commands/setup-stack.md" in names  # Claude Code slash command
     assert "CLAUDE.md" in names
     assert "AGENTS.md" in names
     assert "README.md" in names

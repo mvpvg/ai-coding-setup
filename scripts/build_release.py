@@ -137,10 +137,13 @@ def build_release(version: str, output_dir: Path, repo_root: Path) -> Path:
         # Prompts
         prompts_dst = staging / "prompts"
         prompts_dst.mkdir()
-        shutil.copy2(
-            repo_root / "prompts" / "setup-stack.md",
-            prompts_dst / "setup-stack.md",
-        )
+        setup_stack_src = repo_root / "prompts" / "setup-stack.md"
+        shutil.copy2(setup_stack_src, prompts_dst / "setup-stack.md")
+
+        # Register /setup-stack as a Claude Code slash command
+        commands_dst = staging / ".claude" / "commands"
+        commands_dst.mkdir(parents=True)
+        shutil.copy2(setup_stack_src, commands_dst / "setup-stack.md")
 
         # Templates (the post-install ones)
         templates_src = repo_root / "templates"
