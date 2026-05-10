@@ -178,6 +178,43 @@ def test_build_release_writes_sha256(tmp_path):
     assert h.hexdigest() in sha_path.read_text()
 
 
+def test_build_keeps_latest_in_root_moves_others_to_archive(tmp_path):
+    from scripts.build_release import _archive_previous_releases
+    # Create fake zips in output dir
+    for v in ["0.1.0", "0.2.0", "0.2.1"]:
+        (tmp_path / f"ai-coding-stack-v{v}.zip").write_bytes(b"x")
+        (tmp_path / f"ai-coding-stack-v{v}.zip.sha256").write_text("abc")
+
+    _archive_previous_releases(tmp_path)
+
+    # Only newest stays in root
+    assert (tmp_path / "ai-coding-stack-v0.2.1.zip").exists()
+    assert not (tmp_path / "ai-coding-stack-v0.1.0.zip").exists()
+    assert not (tmp_path / "ai-coding-stack-v0.2.0.zip").exists()
+    # Older ones moved to archive
+    assert (tmp_path / "archive" / "ai-coding-stack-v0.1.0.zip").exists()
+    assert (tmp_path / "archive" / "ai-coding-stack-v0.2.0.zip").exists()
+
+
+def test_rotate_deletes_beyond_5(tmp_path):
+    from scripts.build_release import _rotate_releases
+    archive = tmp_path / "archive"
+    archive.mkdir()
+    # 4 in archive + 1 in root = 5 total; add one more to trigger deletion
+    for v in ["0.1.0", "0.2.0", "0.2.1", "0.2.2"]:
+        (archive / f"ai-coding-stack-v{v}.zip").write_bytes(b"x")
+        (archive / f"ai-coding-stack-v{v}.zip.sha256").write_text("abc")
+    (tmp_path / "ai-coding-stack-v0.2.3.zip").write_bytes(b"x")
+    (tmp_path / "ai-coding-stack-v0.2.4.zip").write_bytes(b"x")  # this makes 6 total
+
+    _rotate_releases(tmp_path, keep=5)
+
+    # Oldest (0.1.0) deleted, rest kept
+    assert not (archive / "ai-coding-stack-v0.1.0.zip").exists()
+    assert (archive / "ai-coding-stack-v0.2.0.zip").exists()
+    assert (tmp_path / "ai-coding-stack-v0.2.4.zip").exists()
+
+
 def test_build_release_readme_generated_from_stack(tmp_path):
     repo = tmp_path / "repo"
     repo.mkdir()

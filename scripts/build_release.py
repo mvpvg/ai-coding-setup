@@ -152,6 +152,44 @@ def render_readme(stack: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _rotate_releases(output_dir: Path, keep: int = 5) -> None:
+    """Keep `keep` total releases: latest in output_dir root, older in output_dir/archive/.
+
+    Deletes releases beyond `keep` oldest-first.
+    """
+    archive_dir = output_dir / "archive"
+
+    # Gather all zips across both locations (excluding the one just built — caller moves it after)
+    all_zips = sorted(output_dir.glob("ai-coding-stack-v*.zip")) + \
+               sorted(archive_dir.glob("ai-coding-stack-v*.zip") if archive_dir.exists() else [])
+    # Sort by version string embedded in filename
+    all_zips = sorted(all_zips, key=lambda p: p.name)
+
+    if len(all_zips) <= keep:
+        return
+
+    # Delete oldest beyond keep
+    to_delete = all_zips[:len(all_zips) - keep]
+    for z in to_delete:
+        z.unlink(missing_ok=True)
+        sha = z.parent / (z.name + ".sha256")
+        sha.unlink(missing_ok=True)
+
+
+def _archive_previous_releases(output_dir: Path) -> None:
+    """Move all zips in output_dir root (except the newest) into output_dir/archive/."""
+    zips = sorted(output_dir.glob("ai-coding-stack-v*.zip"), key=lambda p: p.name)
+    if len(zips) <= 1:
+        return
+    archive_dir = output_dir / "archive"
+    archive_dir.mkdir(exist_ok=True)
+    for z in zips[:-1]:  # all but the newest
+        z.rename(archive_dir / z.name)
+        sha = output_dir / (z.name + ".sha256")
+        if sha.exists():
+            sha.rename(archive_dir / sha.name)
+
+
 def _hash_file(path: Path) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -233,6 +271,10 @@ def build_release(version: str, output_dir: Path, repo_root: Path) -> Path:
         digest = _hash_file(zip_path)
         sha_path = zip_path.parent / (zip_path.name + ".sha256")
         sha_path.write_text(f"{digest}  {zip_path.name}\n", encoding="utf-8")
+
+        # Move previous releases to archive/, enforce 5-version limit
+        _archive_previous_releases(output_dir)
+        _rotate_releases(output_dir, keep=5)
 
         return zip_path
     finally:
