@@ -4,8 +4,9 @@ import zipfile
 import pytest
 import httpx
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
+from scripts.lib.allowlist import DomainNotAllowedError
 from scripts.validate import (
     ValidationResult,
     validate_url_reachable,
@@ -237,3 +238,19 @@ def test_pypi_evidence_url_contains_package_name():
         return httpx.Response(200, json={"info": {"version": "1.0"}, "releases": {}})
     result = validate_pypi_package("httpx", _transport=httpx.MockTransport(handler))
     assert "httpx" in result.evidence_url
+
+
+def test_npm_disallowed_domain():
+    # Mock check_url to raise DomainNotAllowedError for testing the exception handler
+    with patch("scripts.validate.check_url", side_effect=DomainNotAllowedError("domain not allowed")):
+        result = validate_npm_package("react")
+        assert result.passed is False
+        assert "domain not allowed" in result.details
+
+
+def test_pypi_disallowed_domain():
+    # Mock check_url to raise DomainNotAllowedError for testing the exception handler
+    with patch("scripts.validate.check_url", side_effect=DomainNotAllowedError("domain not allowed")):
+        result = validate_pypi_package("requests")
+        assert result.passed is False
+        assert "domain not allowed" in result.details
