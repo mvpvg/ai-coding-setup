@@ -84,3 +84,40 @@ def test_generate_manifest_round_trips(tmp_path):
     assert out["schema_version"] == "1"
     assert len(out["tools"]) > 0
     assert "# Stack Manifest" in smp.read_text()
+
+
+def test_setup_stack_prompt_exists():
+    assert (PROMPTS_ROOT / "setup-stack.md").exists()
+
+
+def test_release_assets_exist():
+    release_assets = REPO_ROOT / "release_assets"
+    assert (release_assets / "CLAUDE.md").exists()
+    assert (release_assets / "AGENTS.md").exists()
+
+
+def test_setup_helpers_module_imports():
+    import scripts.setup_helpers
+    assert hasattr(scripts.setup_helpers, "check_prereqs")
+    assert hasattr(scripts.setup_helpers, "verify_sha256")
+    assert hasattr(scripts.setup_helpers, "download_with_verify")
+    assert hasattr(scripts.setup_helpers, "write_mcp_config")
+    assert hasattr(scripts.setup_helpers, "apply_template")
+
+
+def test_build_release_module_imports():
+    import scripts.build_release
+    assert hasattr(scripts.build_release, "build_release")
+    assert hasattr(scripts.build_release, "render_readme")
+
+
+def test_stack_toml_has_prereqs():
+    data = read_toml(STACK_PATH)
+    # At least one tool should declare prereqs
+    has_prereqs = False
+    for section in ("base_tools", "mcp_servers", "per_project"):
+        for cfg in data.get(section, {}).values():
+            if cfg.get("prereqs"):
+                has_prereqs = True
+                break
+    assert has_prereqs, "Expected at least one tool in stack.toml to declare prereqs"

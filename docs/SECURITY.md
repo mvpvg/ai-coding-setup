@@ -1,34 +1,29 @@
 # Security
 
-## Safety Invariants
+## Safety invariants
 
-These are enforced at the `lib/` layer and cannot be bypassed by higher-level scripts:
+Enforced at the `lib/` and `setup_helpers.py` layers:
 
-1. **No shell injection** — all subprocess calls use argument arrays (`["cmd", "arg"]`). `shell=True` is never used.
-2. **No string-concatenated commands** — commands are constructed from validated parts, never from user/research strings directly.
-3. **Domain allowlist** — all HTTP requests are checked against `lib/allowlist.py`. Requests to unlisted domains raise `DomainNotAllowedError`.
-4. **SHA256 verification** — all binary downloads are verified against expected checksums before use.
-5. **No curl | bash** — no remote code execution patterns.
-6. **Path sandboxing** — all paths are `resolve()`-ed and verified within allowed roots before writing.
+1. **No shell injection** — all subprocess calls use argument arrays. `shell=True` never used.
+2. **No string-concatenated commands** — commands are constructed from validated parts.
+3. **Domain allowlist** — all HTTP downloads check the URL host against a hardcoded `frozenset`. Unlisted hosts raise.
+4. **HTTPS only** — non-https URLs are rejected before any network call.
+5. **SHA256 verification** — all binary downloads via `download_with_verify` must match the expected hash; mismatch raises after deleting the partial file.
+6. **No `curl | bash`, no `eval`** — never used.
+7. **Path sandboxing** — paths resolved before writes.
 
-## Audit Log
+## Allowlisted domains
 
-All PreToolUse and PostToolUse events are logged as JSONL to `~/.claude/audit.log`.
+Defined in `scripts/setup_helpers.py` as `_ALLOWED_DOMAINS` and `scripts/lib/allowlist.py` as `ALLOWED_DOMAINS`. To add a domain, edit the source — it's intentionally not configurable via stack.toml.
 
-Each entry:
-```json
-{"ts": "2026-05-10T09:00:00+00:00", "event": "tool_use", "tool": "Bash", "command": "...", "cwd": "..."}
-{"ts": "2026-05-10T09:00:01+00:00", "event": "tool_result", "tool": "Bash", "exit_code": 0}
-```
+## Credential handling during /setup-stack
 
-The log is pushed daily to a private GitHub repo (`dev-stack-snapshots` by default) via `audit push` subcommand or the installed schedule.
+- The agent prompts the user for credentials (e.g., `GITHUB_TOKEN`, postgres connection string).
+- Tokens are written to `.env`.
+- `.gitignore` is updated to exclude `.env` if not already.
+- Credentials are never committed, never logged, never sent over the network by the helper.
+- MCP server configs that need credentials reference them via env-var substitution, not literal values.
 
-## Snapshots
+## Conflict detection
 
-Every `update --apply` creates a pre-update snapshot before writing any files. If anything fails, the snapshot is automatically restored. A post-update snapshot is taken after successful apply.
-
-Snapshots are stored in `snapshot_dir` (configured in `stack.toml [paths]`) and pushed to the private GitHub repo.
-
-## Conflict Detection
-
-`bootstrap_project.py` reads `~/.claude/settings.json` and warns if any conflicting plugins (listed in `stack.toml [conflicting_plugins]`) are enabled. It does not auto-disable — user action required.
+`stack.toml [conflicting_plugins]` lists known-conflicting plugins. The setup-stack prompt warns if any are detected in `~/.claude/settings.json`. User action required — no auto-disable.

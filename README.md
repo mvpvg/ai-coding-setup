@@ -1,71 +1,48 @@
-# Dev Stack — Personal AI Coding Setup
+# AI Coding Stack
 
-Bootstraps and maintains an opinionated AI-coding stack for Claude Code and OpenCode.
-Targets macOS and Windows (Linux by inheritance).
+Curated, AI-reviewed, opinionated AI coding stack for Claude Code and OpenCode. Targets macOS, Linux, and Windows.
 
-## Quick Start
+This repo has two roles: **curation** (maintainer keeps `stack.toml` accurate) and **release** (users download a zip and run an AI-guided installer in their projects).
 
-```bash
-# Install dependencies
-uv pip install -r requirements.txt   # or: pip install -r requirements.txt
+## For users — install the stack into a new project
 
-# First-time setup (validates gh CLI, creates snapshot repo, takes initial snapshot)
-python scripts/bootstrap_project.py
+1. Download the latest release zip from GitHub Releases.
+2. Extract it into an empty project folder.
+3. Open the folder in Claude Code or OpenCode.
+4. Run `/setup-stack`. The agent will check your prereqs, recommend tools, and configure everything.
 
-# Apply templates to a new project
-python scripts/bootstrap_project.py --resume /path/to/your/project
-```
+If you prefer a manual install, the bundled `README.md` lists every tool with its install command.
 
-## Stack Management
+## For maintainers — keep the stack curated
 
 ```bash
-# Summary: tool count, last validated, last snapshot
-python -m scripts.update_stack check
+# Inspect stack
+uv run python -m scripts.update_stack check
 
-# Dry-run diff (requires research_results.json — use /refresh-stack to generate)
-python -m scripts.update_stack update --research research_results.json
+# Generate research brief, then have Claude produce research_results.json
+# (Use /refresh-stack in Claude Code while inside this repo)
 
-# Apply updates + snapshot pre/post + write Tolaria notes
-python -m scripts.update_stack update --research research_results.json --apply
+# Apply pinned versions from research
+uv run python -m scripts.update_stack update --research research_results.json --apply
 
-# Snapshots
-python -m scripts.update_stack snapshot              # manual snapshot
-python -m scripts.update_stack snapshots list        # list all snapshots
-python -m scripts.update_stack snapshots prune       # delete beyond retention limit
-python -m scripts.update_stack restore --latest      # restore most recent snapshot
-python -m scripts.update_stack restore 2026-05-10    # restore by timestamp prefix
+# Regenerate STACK.md and MANIFEST.json
+uv run python -m scripts.update_stack generate
 
-# Audit log
-python -m scripts.update_stack audit tail            # last 20 entries
-python -m scripts.update_stack audit tail --n 50     # last 50 entries
-python -m scripts.update_stack audit push            # push log to private GitHub repo
-
-# Manifest
-python -m scripts.update_stack generate              # regenerate STACK.md + MANIFEST.json
+# Build a release zip
+uv run python -m scripts.build_release --version 0.1.0 --output dist/
 ```
 
-## Slash Commands
+## Slash commands (for use inside Claude Code/OpenCode)
 
-Install these in your Claude Code project (copy to `.claude/commands/`):
-
-- `/refresh-stack` — research all tools, produce `research_results.json`
-- `/audit-stack` — compare installed vs latest (read-only)
-- `/add-tool <url>` — research a tool and draft a `stack.toml` entry
-
-## Scheduling
-
-Set up daily audit log push:
-
-```bash
-python scripts/schedule.py install    # macOS: launchd | Windows: Task Scheduler
-python scripts/schedule.py uninstall  # remove schedule
-```
+- `/refresh-stack` — research current state of all tools, output `research_results.json`
+- `/audit-stack` — read-only diff of pinned versions vs latest
+- `/add-tool <url>` — research a new tool and draft a `stack.toml` entry
+- `/setup-stack` — install the stack into the current project (bundled in release zip)
 
 ## Safety
 
-- All subprocess calls use argument arrays — no `shell=True`, no string concatenation
-- All HTTP requests go through domain allowlist
-- Binary downloads SHA256-verified before use
-- No `curl | bash`, no `eval`
+- All subprocess calls use argument arrays; no `shell=True`, no string concatenation.
+- All HTTP downloads go through a domain allowlist and are SHA256-verified.
+- No `curl | bash`, no `eval`.
 
-See [SECURITY.md](docs/SECURITY.md) for details and [ARCHITECTURE.md](docs/ARCHITECTURE.md) for system design.
+See [SECURITY.md](docs/SECURITY.md) and [ARCHITECTURE.md](docs/ARCHITECTURE.md).

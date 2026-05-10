@@ -26,7 +26,31 @@ min_version = "1.0.0"    # minimum acceptable version (used by validate.py)
 id = "plugin-id"         # marketplace/official ID (when source != npm/pypi)
 extras = "full"          # pypi extras (e.g. package[full])
 path = "skills/foo"      # subpath within a github repo
+prereqs = ["docker", "node"]  # array of well-known prereq keys
 ```
+
+## Prereq keys
+
+Each tool's `prereqs` field lists the prerequisites required for it to install/run. The installer (`/setup-stack`) checks these and skips tools whose prereqs aren't met.
+
+Recognized keys (handled by `setup_helpers.py check-prereqs`):
+
+| Key | Check |
+|-----|-------|
+| `docker` | `docker --version` |
+| `node` | `node --version` |
+| `python` | Python ≥ 3.11 |
+| `gh` | `gh --version` |
+| `gh-auth` | `gh auth status` (logged in) |
+| `gh-token` | `GITHUB_TOKEN` env var or `gh-auth` |
+| `postgres` | `psql --version` |
+| `postgres-conn-string` | `POSTGRES_URL` or `DATABASE_URL` env var |
+| `git` | `git --version` |
+| `claude-cli` | `claude --version` |
+| `pnpm` / `npm` / `yarn` | respective `--version` |
+| `uv` / `pip` | respective `--version` |
+
+To add a new prereq key, edit `_PREREQ_COMMANDS` (or the special-case branches) in `scripts/setup_helpers.py` and document it here.
 
 ## Using /add-tool
 

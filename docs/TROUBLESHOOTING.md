@@ -8,30 +8,6 @@ RuntimeError: gh CLI is not authenticated. Run: gh auth login
 
 Fix: `gh auth login` then retry.
 
-## "snapshot_dir not configured in stack.toml"
-
-```
-RuntimeError: snapshot_dir not configured in stack.toml — run bootstrap first
-```
-
-Fix: run `python scripts/bootstrap_project.py` to complete first-time setup. This sets `paths.snapshot_dir` in `stack.toml`.
-
-## "No snapshots found"
-
-```
-RuntimeError: No snapshots found in /path/to/snapshots
-```
-
-Fix: run `python -m scripts.update_stack snapshot` to create the first manual snapshot.
-
-## "No snapshot matching timestamp"
-
-```
-RuntimeError: No snapshot matching timestamp '2026-05-XX'
-```
-
-Fix: run `python -m scripts.update_stack snapshots list` to see available snapshots, then use a prefix from the list.
-
 ## Tests failing with import errors
 
 Ensure the package is installed in editable mode or run via `uv`:
@@ -57,6 +33,16 @@ Disable the listed plugins in `~/.claude/settings.json` before running bootstrap
 
 A script attempted to contact a domain not in the allowed list. The allowlist is a hardcoded `frozenset` in `scripts/lib/allowlist.py` (`ALLOWED_DOMAINS`). To add a new domain, edit `ALLOWED_DOMAINS` in that file and run the tests to verify.
 
-## Windows: launchd commands not found
+## /setup-stack: a tool was skipped with "prereq not met"
 
-launchd is macOS only. On Windows, use `python scripts/schedule.py install` which registers a Task Scheduler job instead.
+The installer skips tools whose `prereqs` aren't satisfied. Run:
+
+```bash
+python setup_helpers.py check-prereqs <key1> <key2> ...
+```
+
+…to see which prereqs failed. Install the missing one, then run `/setup-stack` again — it's idempotent.
+
+## /setup-stack: SHA256 mismatch on a github_release download
+
+The release artifact's SHA256 changed since `stack.toml` was pinned. Don't override — the maintainer needs to refresh `research_results.json`, re-pin, and rebuild the release zip. As an end user, file an issue with the URL and the actual vs expected hash.

@@ -1,78 +1,73 @@
 # Architecture
 
-## System Overview
+## Two roles, one repo
 
-Two phases per operation:
-
-**Research phase (human-in-loop):**
+**Maintainer side (curation):**
 1. `/refresh-stack` prompt → Claude Code researches all tools → outputs `research_results.json`
-2. `validate.py` independently verifies every claim (URL reachability, version checks, SHA256)
-3. No research string ever becomes a shell command — only validated, constructed-from-parts commands run
+2. `validate.py` independently verifies every claim
+3. `update_stack.py update --apply` updates pinned versions in `stack.toml`
+4. `update_stack.py generate` regenerates `STACK.md` and `MANIFEST.json`
+5. `build_release.py` produces a zip release
 
-**Apply phase (automated):**
-1. Snapshot global config (`~/.claude/`, `~/.opencode/`, project `.claude/`) → zip → push to private GitHub repo
-2. Write files (update `stack.toml` pinned versions)
-3. Snapshot again (post-change)
-4. Write Tolaria decision note per tool
+**User side (the release zip):**
+1. User extracts release zip into a new project folder
+2. User opens folder in Claude Code or OpenCode
+3. User runs `/setup-stack`
+4. Agent checks prereqs (via `setup_helpers.py check-prereqs`)
+5. Agent installs tools per source type (npm, pypi, marketplace, official MCP, github_release)
+6. Agent applies project-type templates (`CLAUDE.md`, `AGENTS.md`, optional hooks)
 
-Any failure mid-apply → auto-restore from pre-change snapshot.
+`stack.toml` is the single source of truth.
 
-## Component Map
+## Component map
 
-### lib/ (stdlib only, no side effects)
+### lib/ (stdlib only)
 
 | Module | Responsibility |
 |--------|---------------|
-| `platform_paths.py` | All OS-specific path resolution. Single source of truth. |
-| `allowlist.py` | Domain gating for all HTTP requests |
-| `checksums.py` | SHA256 computation and verification |
-| `subprocess_safe.py` | Hardened subprocess wrappers (array args, no shell=True) |
-| `config.py` | TOML config file read/write |
+| `platform_paths.py` | OS-specific path resolution |
+| `allowlist.py` | Domain gating for HTTP requests |
+| `checksums.py` | SHA256 computation/verification |
+| `subprocess_safe.py` | Hardened subprocess wrappers |
+| `config.py` | TOML config read/write |
 
 ### scripts/
 
 | Script | Responsibility |
 |--------|---------------|
-| `validate.py` | Validators → `ValidationResult`. Parallel via `concurrent.futures`. |
-| `snapshot.py` | Deterministic zip + `SNAPSHOT_MANIFEST.json`. Atomic restore. Retention=5. |
-| `bootstrap_project.py` | First-run and new-project flows. |
-| `update_stack.py` | `check`, `update`, `snapshot`, `restore`, `audit`, `generate` subcommands. |
-| `audit.py` | JSONL to `~/.claude/audit.log`. |
-| `generate_manifest.py` | Pure function: stack dict → `MANIFEST.json` + `STACK.md`. |
-| `research.py` | Brief generation + JSON parsing + validation orchestration. |
-| `tolaria_writer.py` | Decision notes to Tolaria vault on every applied change. |
-| `schedule.py` | Install/uninstall launchd plist (macOS) or Task Scheduler XML (Windows). _(added in build step 18)_ |
+| `validate.py` | Independent verification of research claims |
+| `update_stack.py` | `check`, `update`, `generate` subcommands |
+| `generate_manifest.py` | Pure: stack dict → MANIFEST.json + STACK.md |
+| `research.py` | Brief generation + research_results.json parsing |
+| `setup_helpers.py` | Stdlib-only installer helpers (bundled in release zip) |
+| `build_release.py` | Builds release zip + sha256 sidecar |
 
-## Data Flow
+## Release zip layout
 
 ```
-stack.toml → research brief → Claude Code → research_results.json
-                                                    ↓
-                                             validate.py (independent verification)
-                                                    ↓
-                                             update_stack.py compute_diff
-                                                    ↓
-                                        display (rich table, 3 tiers)
-                                                    ↓
-                                    [--apply] → snapshot → write toml → snapshot
-                                                              ↓
-                                                    tolaria_writer.py
+ai-coding-stack-vX.Y.Z.zip
+├── stack.toml
+├── CLAUDE.md (installer-mode)
+├── AGENTS.md (installer-mode)
+├── README.md (manual fallback)
+├── prompts/setup-stack.md
+├── setup_helpers.py
+├── requirements.txt
+└── templates/
+    ├── claude_md/{base,react_frontend,fastapi_backend,fullstack}.md
+    ├── agents_md/base.md
+    ├── hooks/{pre,post}-tool.{sh,cmd}
+    ├── mcp_configs/*.json
+    └── settings_json/settings.json
 ```
 
-## Snapshot Format
+## Cross-platform paths
 
-- **Contents:** `~/.claude/`, `~/.opencode/` (if exists), `STACK.md`, `MANIFEST.json`, Tolaria notes (last 30 days)
-- **Naming:** `{YYYY-MM-DD_HH-MM-SS}_{reason}{_tag}.zip`
-- **Retention:** 5 max, enforced after every snapshot
-- **Restore:** snapshots current state first, validates SHA256, atomic move
-
-## Cross-Platform Paths
-
-All path logic lives exclusively in `lib/platform_paths.py`. No other file constructs paths.
+`scripts/lib/platform_paths.py` is the single source for OS-specific paths. No other file constructs them.
 
 ```python
-claude_config_dir() -> Path    # ~/.claude/ | %USERPROFILE%\.claude\
-opencode_config_dir() -> Path  # ~/.opencode/ | %USERPROFILE%\.opencode\
-app_config_dir() -> Path       # ~/.config/dev-stack/ | %APPDATA%\dev-stack\
-hook_executable_extension()    # '.sh' | '.cmd'
+claude_config_dir() -> Path     # ~/.claude/ | %USERPROFILE%\.claude\
+opencode_config_dir() -> Path
+app_config_dir() -> Path
+hook_executable_extension()     # '.sh' | '.cmd'
 ```
