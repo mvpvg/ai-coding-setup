@@ -1,0 +1,69 @@
+[meta]
+schema_version = "1"
+created = "2026-05-10T00:00:00Z"
+last_validated = ""
+
+[paths]
+snapshot_dir = ""
+tolaria_vault = ""
+
+[github]
+private_snapshot_repo = "dev-stack-snapshots"
+
+[runtime]
+primary_os = "auto"
+package_manager = "pnpm"
+python_manager = "uv"
+default_caveman_level = "full"
+
+[base_tools]
+superpowers = { source = "marketplace", id = "superpowers@claude-plugins-official", min_version = "*" }
+frontend_design = { source = "marketplace", id = "frontend-design@claude-code-plugins", min_version = "*" }
+caveman = { source = "github", repo = "JuliusBrussee/caveman", min_version = "*" }
+mattpocock_grill = { source = "github", repo = "mattpocock/skills", path = "skills/engineering/grill-with-docs" }
+mattpocock_diagnose = { source = "github", repo = "mattpocock/skills", path = "skills/engineering/diagnose" }
+git_guardrails = { source = "github", repo = "mattpocock/skills", path = "skills/misc/git-guardrails-claude-code" }
+
+[mcp_servers]
+cocoindex_code = { source = "pypi", package = "cocoindex-code", extras = "full" }
+context7 = { source = "npm", package = "@upstash/context7-mcp" }
+github = { source = "official", id = "github" }
+postgres = { source = "official", id = "postgres" }
+filesystem = { source = "official", id = "filesystem" }
+
+[per_project]
+playwright = { trigger = "has_e2e_tests", source = "npm", package = "@playwright/mcp" }
+gitnexus = { trigger = "manual", source = "npm", package = "gitnexus" }
+graphify = { trigger = "manual", source = "pypi", package = "graphifyy" }
+obscura = { trigger = "manual", source = "github_release", repo = "h4ckf0r0day/obscura" }
+
+[conflicting_plugins]
+everything_claude_code = { id = "everything-claude-code", reason = "Conflicts with Superpowers" }
+ui_ux_pro_max = { id = "ui-ux-pro-max-skill", reason = "Overlaps with frontend-design" }
+ruflo = { id = "ruflo", reason = "314 MCP tools — opposite of token-efficient" }
+sandcastle = { id = "sandcastle", reason = "Deferred until AFK runs are needed" }
+caveman_micro = { id = "caveman-micro", reason = "Redundant with caveman levels" }
+pacquet = { id = "pacquet", reason = "Alpha; revisit when pnpm officially adopts it" }
+lightpanda = { id = "lightpanda-io-browser", reason = "Obscura is more mature" }
+
+[security]
+audit_log_enabled = true
+audit_log_path = "~/.claude/audit.log"
+audit_log_push_to_repo = true
+allowlisted_domains = [
+    "registry.npmjs.org",
+    "pypi.org",
+    "files.pythonhosted.org",
+    "github.com",
+    "objects.githubusercontent.com",
+    "anthropic.com",
+    "claude.com",
+    "raw.githubusercontent.com",
+    "api.github.com",
+]
+require_checksum_for_binaries = true
+
+[snapshots]
+retention_count = 5
+push_to_github = true
+zip_naming = "{timestamp}_{reason}{tag}.zip"
