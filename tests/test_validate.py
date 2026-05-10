@@ -1,7 +1,5 @@
 import hashlib
 import json
-import zipfile
-import pytest
 import httpx
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -14,6 +12,9 @@ from scripts.validate import (
     validate_path_safe,
     validate_npm_package,
     validate_pypi_package,
+    validate_github_repo,
+    validate_github_release,
+    validate_research_results,
 )
 
 
@@ -255,12 +256,6 @@ def test_pypi_disallowed_domain():
         assert result.passed is False
         assert "domain not allowed" in result.details
 
-
-from scripts.validate import (
-    validate_github_repo,
-    validate_github_release,
-    validate_research_results,
-)
 
 
 # --- validate_github_repo ---

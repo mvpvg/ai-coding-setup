@@ -71,7 +71,7 @@ def validate_checksum(file_path: Path, expected_sha256: str) -> ValidationResult
             details=f"SHA256 verified: {expected_sha256[:16]}...",
             evidence_url="",
         )
-    except ChecksumError as e:
+    except (ChecksumError, FileNotFoundError) as e:
         return ValidationResult(
             passed=False, tool=str(file_path), check=check,
             details=str(e), evidence_url="",
@@ -198,7 +198,14 @@ def validate_github_repo(owner: str, repo: str) -> ValidationResult:
                 details=f"gh api failed: {result.stderr.decode().strip()}",
                 evidence_url=evidence_url,
             )
-        data = json.loads(result.stdout)
+        try:
+            data = json.loads(result.stdout)
+        except json.JSONDecodeError as e:
+            return ValidationResult(
+                passed=False, tool=f"{owner}/{repo}", check=check,
+                details=f"Failed to parse gh api response: {e}",
+                evidence_url=evidence_url,
+            )
         if data.get("archived"):
             return ValidationResult(
                 passed=False, tool=f"{owner}/{repo}", check=check,
@@ -238,7 +245,14 @@ def validate_github_release(
                 details=f"gh api failed: {result.stderr.decode().strip()}",
                 evidence_url=evidence_url,
             )
-        data = json.loads(result.stdout)
+        try:
+            data = json.loads(result.stdout)
+        except json.JSONDecodeError as e:
+            return ValidationResult(
+                passed=False, tool=f"{owner}/{repo}", check=check,
+                details=f"Failed to parse gh api response: {e}",
+                evidence_url=evidence_url,
+            )
         tag_name = data.get("tag_name", "unknown")
         return ValidationResult(
             passed=True, tool=f"{owner}/{repo}", check=check,
