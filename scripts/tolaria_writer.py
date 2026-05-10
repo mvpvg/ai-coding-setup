@@ -20,7 +20,7 @@ def write_decision_note(
 
     note_path = decisions_dir / f"{today}-{tool_id}.md"
 
-    prev_line = f"**Previous version:** {previous_version}  \n" if previous_version else ""
+    prev_line = f"**Previous version:** {previous_version}  \n" if previous_version is not None else ""
     details_block = f"\n{details}\n" if details else ""
 
     content = (

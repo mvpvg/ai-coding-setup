@@ -1,5 +1,4 @@
 import re
-import pytest
 from pathlib import Path
 from scripts.tolaria_writer import write_decision_note
 
