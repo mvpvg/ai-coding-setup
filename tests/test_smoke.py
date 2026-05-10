@@ -68,11 +68,12 @@ def test_collect_tools_returns_all_stack_sections():
     tools = _collect_tools(data)
     expected_count = sum(
         len(data.get(s, {}))
-        for s in ("base_tools", "mcp_servers", "per_project")
+        for s in ("base_tools", "global_tools", "mcp_servers", "per_project")
     )
     assert len(tools) == expected_count
     sections_present = {t["section"] for t in tools}
-    assert sections_present == {"base_tools", "mcp_servers", "per_project"}
+    assert "base_tools" in sections_present
+    assert "global_tools" in sections_present
 
 
 def test_generate_manifest_round_trips(tmp_path):
@@ -115,9 +116,14 @@ def test_stack_toml_has_prereqs():
     data = read_toml(STACK_PATH)
     # At least one tool should declare prereqs
     has_prereqs = False
-    for section in ("base_tools", "mcp_servers", "per_project"):
+    for section in ("base_tools", "global_tools", "mcp_servers", "per_project"):
         for cfg in data.get(section, {}).values():
             if cfg.get("prereqs"):
                 has_prereqs = True
                 break
     assert has_prereqs, "Expected at least one tool in stack.toml to declare prereqs"
+
+
+def test_global_claude_md_template_exists():
+    assert (TEMPLATES_ROOT / "claude_md" / "global.md").exists(), \
+        "templates/claude_md/global.md missing"

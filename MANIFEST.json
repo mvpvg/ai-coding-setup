@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "generated_at": "2026-05-10T15:52:04.947024+00:00",
+  "generated_at": "2026-05-10T18:54:22.133763+00:00",
   "tools": [
     {
       "id": "superpowers",
@@ -21,7 +21,7 @@
       ]
     },
     {
-      "id": "caveman",
+      "id": "grill_with_docs",
       "section": "base_tools",
       "source": "github",
       "pinned_version": null,
@@ -30,16 +30,7 @@
       ]
     },
     {
-      "id": "mattpocock_grill",
-      "section": "base_tools",
-      "source": "github",
-      "pinned_version": null,
-      "prereqs": [
-        "git"
-      ]
-    },
-    {
-      "id": "mattpocock_diagnose",
+      "id": "diagnose",
       "section": "base_tools",
       "source": "github",
       "pinned_version": null,
@@ -58,8 +49,38 @@
     },
     {
       "id": "cocoindex_code",
-      "section": "mcp_servers",
-      "source": "pypi",
+      "section": "global_tools",
+      "source": "uv_tool",
+      "pinned_version": null,
+      "prereqs": [
+        "python",
+        "uv"
+      ]
+    },
+    {
+      "id": "mempalace",
+      "section": "global_tools",
+      "source": "uv_tool",
+      "pinned_version": null,
+      "prereqs": [
+        "python",
+        "uv"
+      ]
+    },
+    {
+      "id": "playwright",
+      "section": "global_tools",
+      "source": "npm",
+      "pinned_version": null,
+      "prereqs": [
+        "node",
+        "pnpm"
+      ]
+    },
+    {
+      "id": "graphify",
+      "section": "global_tools",
+      "source": "uv_tool",
       "pinned_version": null,
       "prereqs": [
         "python",
@@ -73,67 +94,15 @@
       "pinned_version": null,
       "prereqs": [
         "node",
-        "npm"
+        "pnpm"
       ]
     },
     {
-      "id": "github",
+      "id": "tolaria",
       "section": "mcp_servers",
-      "source": "official",
+      "source": "desktop",
       "pinned_version": null,
-      "prereqs": [
-        "docker",
-        "gh-token"
-      ]
-    },
-    {
-      "id": "postgres",
-      "section": "mcp_servers",
-      "source": "official",
-      "pinned_version": null,
-      "prereqs": [
-        "postgres",
-        "postgres-conn-string"
-      ]
-    },
-    {
-      "id": "filesystem",
-      "section": "mcp_servers",
-      "source": "official",
-      "pinned_version": null,
-      "prereqs": [
-        "node"
-      ]
-    },
-    {
-      "id": "playwright",
-      "section": "per_project",
-      "source": "npm",
-      "pinned_version": null,
-      "prereqs": [
-        "node",
-        "npm"
-      ]
-    },
-    {
-      "id": "gitnexus",
-      "section": "per_project",
-      "source": "npm",
-      "pinned_version": null,
-      "prereqs": [
-        "node",
-        "npm"
-      ]
-    },
-    {
-      "id": "graphify",
-      "section": "per_project",
-      "source": "pypi",
-      "pinned_version": null,
-      "prereqs": [
-        "python",
-        "uv"
-      ]
+      "prereqs": []
     },
     {
       "id": "obscura",

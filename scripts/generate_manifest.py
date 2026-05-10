@@ -8,7 +8,7 @@ from typing import Any
 
 def _collect_tools(stack: dict[str, Any]) -> list[dict[str, Any]]:
     tools = []
-    for section in ("base_tools", "mcp_servers", "per_project"):
+    for section in ("base_tools", "global_tools", "mcp_servers", "per_project"):
         for tool_id, cfg in stack.get(section, {}).items():
             tools.append({
                 "id": tool_id,
@@ -23,6 +23,7 @@ def _collect_tools(stack: dict[str, Any]) -> list[dict[str, Any]]:
 def _render_stack_md(tools: list[dict[str, Any]], generated_at: str) -> str:
     section_labels = {
         "base_tools": "Base Tools",
+        "global_tools": "Global CLI Tools",
         "mcp_servers": "MCP Servers",
         "per_project": "Per-Project Tools",
     }

@@ -166,6 +166,12 @@ def apply_template(template_name: str, project_dir: Path, project_type: str) -> 
                 shutil.copy2(hook, dst)
                 if hook.suffix == ".sh":
                     dst.chmod(0o755)
+    elif template_name == "global_claude_md":
+        src = templates_root / "claude_md" / "global.md"
+        if src.exists():
+            dest = project_dir / ".claude" / "CLAUDE.md"
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dest)
     else:
         raise ValueError(f"Unknown template: {template_name}")
 
@@ -192,7 +198,7 @@ def main() -> None:
     wm.add_argument("--project-dir", default=".")
 
     at = sub.add_parser("apply-template")
-    at.add_argument("template_name", choices=["claude_md", "agents_md", "hooks"])
+    at.add_argument("template_name", choices=["claude_md", "agents_md", "hooks", "global_claude_md"])
     at.add_argument("--project-type", default="base")
     at.add_argument("--project-dir", default=".")
 

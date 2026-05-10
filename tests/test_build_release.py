@@ -11,8 +11,9 @@ from scripts.lib.config import write_toml
 
 
 def test_install_command_marketplace():
-    cmd = _install_command("marketplace", {"id": "skill-x"})
-    assert "claude plugin marketplace install skill-x" in cmd
+    cmd = _install_command("marketplace", {"id": "skill-x@claude-plugins-official"})
+    assert "claude plugin marketplace update claude-plugins-official" in cmd
+    assert "claude plugin install skill-x@claude-plugins-official" in cmd
 
 
 def test_install_command_official_mcp():
@@ -39,6 +40,24 @@ def test_install_command_pypi_pinned():
 def test_install_command_github():
     cmd = _install_command("github", {"repo": "user/repo"})
     assert "git clone https://github.com/user/repo" in cmd
+
+
+def test_install_command_uv_tool():
+    cmd = _install_command("uv_tool", {"package": "cocoindex-code", "extras": "full"})
+    assert 'uv tool install "cocoindex-code[full]"' in cmd
+
+
+def test_install_command_uv_tool_no_extras():
+    cmd = _install_command("uv_tool", {"package": "mempalace"})
+    assert "uv tool install mempalace" in cmd
+    assert "[" not in cmd
+
+
+def test_install_command_desktop():
+    note = "Manual install from https://example.com/releases"
+    cmd = _install_command("desktop", {"note": note})
+    assert note in cmd
+    assert cmd.startswith("#")
 
 
 def test_install_command_unknown_returns_empty():
@@ -97,6 +116,7 @@ def test_build_release_creates_zip(tmp_path):
     (repo / "release_assets").mkdir()
     (repo / "release_assets" / "CLAUDE.md").write_text("# installer claude", encoding="utf-8")
     (repo / "release_assets" / "AGENTS.md").write_text("# installer agents", encoding="utf-8")
+    (repo / "release_assets" / ".gitignore").write_text("node_modules/\n", encoding="utf-8")
 
     (repo / "templates" / "claude_md").mkdir(parents=True)
     (repo / "templates" / "claude_md" / "base.md").write_text("# base", encoding="utf-8")
@@ -119,6 +139,7 @@ def test_build_release_creates_zip(tmp_path):
     assert "AGENTS.md" in names
     assert "README.md" in names
     assert "templates/claude_md/base.md" in names
+    assert ".gitignore" in names
 
 
 def test_build_release_writes_sha256(tmp_path):

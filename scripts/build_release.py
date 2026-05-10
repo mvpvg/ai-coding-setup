@@ -18,7 +18,8 @@ def _install_command(source: str, cfg: dict[str, Any]) -> str:
     tool_id = cfg.get("id", "")
 
     if source == "marketplace":
-        return f"claude plugin marketplace install {tool_id}"
+        marketplace = tool_id.split("@")[1] if "@" in tool_id else "claude-plugins-official"
+        return f"claude plugin marketplace update {marketplace}\nclaude plugin install {tool_id}"
     if source == "official":
         return f"claude mcp add {tool_id}"
     if source == "npm":
@@ -27,6 +28,10 @@ def _install_command(source: str, cfg: dict[str, Any]) -> str:
     if source == "pypi":
         version = f"=={pinned}" if pinned else ""
         return f"uv add {pkg}{version}"
+    if source == "uv_tool":
+        extras = cfg.get("extras", "")
+        pkg_spec = f'"{pkg}[{extras}]"' if extras else pkg
+        return f"uv tool install {pkg_spec}"
     if source == "github":
         return f"git clone https://github.com/{repo}"
     if source == "github_release":
@@ -34,6 +39,9 @@ def _install_command(source: str, cfg: dict[str, Any]) -> str:
             f"# Download from https://github.com/{repo}/releases — use "
             f"`python setup_helpers.py download-verified <url> <dest> <sha256>`"
         )
+    if source == "desktop":
+        note = cfg.get("note", "Manual install required.")
+        return f"# {note}"
     return ""
 
 
@@ -54,7 +62,7 @@ def render_readme(stack: dict[str, Any]) -> str:
     ]
 
     all_prereqs: set[str] = set()
-    for section in ("base_tools", "mcp_servers", "per_project"):
+    for section in ("base_tools", "global_tools", "mcp_servers", "per_project"):
         for cfg in stack.get(section, {}).values():
             all_prereqs.update(cfg.get("prereqs", []))
 
@@ -70,6 +78,7 @@ def render_readme(stack: dict[str, Any]) -> str:
 
     section_titles = {
         "base_tools": "Base Tools",
+        "global_tools": "Global CLI Tools",
         "mcp_servers": "MCP Servers",
         "per_project": "Per-Project Tools",
     }
@@ -153,6 +162,11 @@ def build_release(version: str, output_dir: Path, repo_root: Path) -> Path:
         # Installer-mode CLAUDE.md / AGENTS.md
         shutil.copy2(repo_root / "release_assets" / "CLAUDE.md", staging / "CLAUDE.md")
         shutil.copy2(repo_root / "release_assets" / "AGENTS.md", staging / "AGENTS.md")
+
+        # .gitignore
+        gitignore_src = repo_root / "release_assets" / ".gitignore"
+        if gitignore_src.exists():
+            shutil.copy2(gitignore_src, staging / ".gitignore")
 
         # Generate README from stack.toml
         stack = read_toml(repo_root / "stack.toml")

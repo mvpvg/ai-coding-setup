@@ -8,26 +8,28 @@ Generated: 2026-05-10
 |------|--------|---------|
 | superpowers | marketplace | unpinned |
 | frontend_design | marketplace | unpinned |
-| caveman | github | unpinned |
-| mattpocock_grill | github | unpinned |
-| mattpocock_diagnose | github | unpinned |
+| grill_with_docs | github | unpinned |
+| diagnose | github | unpinned |
 | git_guardrails | github | unpinned |
+
+## Global CLI Tools
+
+| Tool | Source | Version |
+|------|--------|---------|
+| cocoindex_code | uv_tool | unpinned |
+| mempalace | uv_tool | unpinned |
+| playwright | npm | unpinned |
+| graphify | uv_tool | unpinned |
 
 ## MCP Servers
 
 | Tool | Source | Version |
 |------|--------|---------|
-| cocoindex_code | pypi | unpinned |
 | context7 | npm | unpinned |
-| github | official | unpinned |
-| postgres | official | unpinned |
-| filesystem | official | unpinned |
+| tolaria | desktop | unpinned |
 
 ## Per-Project Tools
 
 | Tool | Source | Version |
 |------|--------|---------|
-| playwright | npm | unpinned |
-| gitnexus | npm | unpinned |
-| graphify | pypi | unpinned |
 | obscura | github_release | unpinned |
