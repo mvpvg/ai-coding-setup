@@ -84,7 +84,6 @@ def compute_diff(
 
 
 def display_diff(diffs: list[ToolDiff], *, console: Console | None = None) -> None:
-    """Print diff grouped by tier using rich tables."""
     _console = console or Console()
     if not diffs:
         _console.print("No changes detected.")
@@ -125,7 +124,6 @@ def display_diff(diffs: list[ToolDiff], *, console: Console | None = None) -> No
 
 
 def cmd_check(stack_path: Path, *, console: Console | None = None) -> None:
-    """Show stack summary: tool count, pinned count, last snapshot, last validated."""
     _console = console or Console()
     cfg = read_toml(stack_path)
 

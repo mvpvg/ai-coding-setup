@@ -241,8 +241,8 @@ def test_cmd_check_shows_tool_count(tmp_path):
     console, buf = _make_console()
     cmd_check(stack_path, console=console)
     out = buf.getvalue()
-    assert "3" in out
-    assert "1" in out
+    assert "3 total" in out
+    assert "1 pinned" in out
 
 
 def test_cmd_check_shows_last_validated(tmp_path):
