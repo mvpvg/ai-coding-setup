@@ -20,7 +20,7 @@ git_guardrails = { source = "github", repo = "mattpocock/skills", path = "skills
 cocoindex_code = { source = "uv_tool", package = "cocoindex-code", extras = "full", prereqs = ["python", "uv"] }
 mempalace = { source = "uv_tool", package = "mempalace", prereqs = ["python", "uv"] }
 playwright = { source = "npm", package = "@playwright/mcp", prereqs = ["node", "pnpm"] }
-graphify = { source = "uv_tool", package = "graphifyy", prereqs = ["python", "uv"] }
+graphify = { source = "uv_tool", package = "graphifyy", prereqs = ["python", "uv"], optional = true }
 
 [mcp_servers]
 context7 = { source = "npm", package = "@upstash/context7-mcp", prereqs = ["node", "pnpm"] }

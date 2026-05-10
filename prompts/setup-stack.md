@@ -16,6 +16,7 @@ Run an AI-guided installation of the curated AI coding stack into the current pr
 
 5. **Per-tool loop.** For each tool in `stack.toml` (sections in order: `base_tools`, `global_tools`, `mcp_servers`, `per_project`):
    - Skip `per_project` tools whose `trigger` doesn't match this project (ask the user when ambiguous).
+   - Skip tools marked `optional = true` by default — list them at the end and ask if the user wants any of them.
    - Re-check the tool's `prereqs`. If any are missing, skip the tool with a clear reason.
    - Explain what the tool does and ask for confirmation.
    - On confirm, run the install command per source type:
