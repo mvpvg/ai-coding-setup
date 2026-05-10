@@ -17,6 +17,7 @@ from scripts.audit import tail as _audit_tail
 from scripts.lib.config import read_toml, write_toml
 from scripts.lib.subprocess_safe import run as safe_run
 from scripts.research import parse_research_results
+from scripts.generate_manifest import generate_manifest
 from scripts.snapshot import create_snapshot, prune_snapshots, restore_snapshot
 from scripts.tolaria_writer import write_decision_note
 
@@ -389,6 +390,21 @@ def cmd_audit_push(
     _console.print(f"Audit log pushed to {full_repo}/{path_in_repo}.")
 
 
+def cmd_generate_manifest(
+    stack_path: Path,
+    *,
+    manifest_path: Path | None = None,
+    stack_md_path: Path | None = None,
+    console: Console | None = None,
+) -> None:
+    _console = console or Console()
+    cfg = read_toml(stack_path)
+    _manifest_path = manifest_path or stack_path.parent / "MANIFEST.json"
+    _stack_md_path = stack_md_path or stack_path.parent / "STACK.md"
+    generate_manifest(cfg, _manifest_path, _stack_md_path)
+    _console.print(f"Generated: {_manifest_path.name}, {_stack_md_path.name}")
+
+
 if __name__ == "__main__":
     import argparse
     import sys
@@ -417,6 +433,8 @@ if __name__ == "__main__":
     restore_p.add_argument("timestamp", nargs="?", default=None,
                            help="Timestamp prefix to match (e.g. 2026-05-10)")
 
+    sub.add_parser("generate", help="Regenerate MANIFEST.json and STACK.md from stack.toml")
+
     audit_p = sub.add_parser("audit", help="Audit log operations")
     audit_sub = audit_p.add_subparsers(dest="audit_cmd")
     audit_tail_p = audit_sub.add_parser("tail", help="Print last N audit log entries")
@@ -443,6 +461,8 @@ if __name__ == "__main__":
         if not args.latest and not args.timestamp:
             parser.error("restore requires --latest or a timestamp argument")
         cmd_restore(stack_path, latest=args.latest, timestamp=args.timestamp)
+    elif args.cmd == "generate":
+        cmd_generate_manifest(stack_path)
     elif args.cmd == "audit":
         if args.audit_cmd == "tail":
             cmd_audit_tail(n=args.n)
