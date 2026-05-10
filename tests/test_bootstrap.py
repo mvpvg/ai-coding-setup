@@ -3,9 +3,6 @@ from unittest.mock import MagicMock
 from scripts.bootstrap_project import (
     detect_conflicting_plugins,
     _validate_gh_cli,
-    _get_gh_username,
-    _repo_exists,
-    _create_snapshot_repo,
     _apply_first_time_setup,
     run_new_project,
 )
@@ -77,59 +74,6 @@ def test_validate_gh_cli_raises_on_failure(mocker):
         _validate_gh_cli()
 
 
-# --- _get_gh_username ---
-
-def test_get_gh_username(mocker):
-    mock = MagicMock()
-    mock.returncode = 0
-    mock.stdout = b"myuser\n"
-    mocker.patch("scripts.bootstrap_project.safe_run", return_value=mock)
-    assert _get_gh_username() == "myuser"
-
-
-def test_get_gh_username_strips_whitespace(mocker):
-    mock = MagicMock()
-    mock.returncode = 0
-    mock.stdout = b"  testuser  \n"
-    mocker.patch("scripts.bootstrap_project.safe_run", return_value=mock)
-    assert _get_gh_username() == "testuser"
-
-
-# --- _repo_exists ---
-
-def test_repo_exists_true(mocker):
-    mock = MagicMock()
-    mock.returncode = 0
-    mocker.patch("scripts.bootstrap_project.safe_run", return_value=mock)
-    assert _repo_exists("user/repo") is True
-
-
-def test_repo_exists_false(mocker):
-    mock = MagicMock()
-    mock.returncode = 1
-    mocker.patch("scripts.bootstrap_project.safe_run", return_value=mock)
-    assert _repo_exists("user/nonexistent") is False
-
-
-# --- _create_snapshot_repo ---
-
-def test_create_snapshot_repo_already_exists(mocker):
-    username_mock = MagicMock(); username_mock.stdout = b"myuser\n"
-    exists_mock = MagicMock(); exists_mock.returncode = 0
-    mocker.patch("scripts.bootstrap_project.safe_run", side_effect=[username_mock, exists_mock])
-    result = _create_snapshot_repo("dev-stack-snapshots")
-    assert result == "myuser/dev-stack-snapshots"
-
-
-def test_create_snapshot_repo_creates_new(mocker):
-    username_mock = MagicMock(); username_mock.stdout = b"myuser\n"
-    exists_mock = MagicMock(); exists_mock.returncode = 1
-    create_mock = MagicMock(); create_mock.returncode = 0
-    mocker.patch("scripts.bootstrap_project.safe_run", side_effect=[username_mock, exists_mock, create_mock])
-    result = _create_snapshot_repo("dev-stack-snapshots")
-    assert result == "myuser/dev-stack-snapshots"
-
-
 # --- _apply_first_time_setup ---
 
 def test_apply_first_time_updates_stack_toml(tmp_path, mocker):
@@ -137,9 +81,7 @@ def test_apply_first_time_updates_stack_toml(tmp_path, mocker):
     write_toml(stack_path, {"conflicting_plugins": {}})
 
     auth_mock = MagicMock(); auth_mock.returncode = 0
-    user_mock = MagicMock(); user_mock.returncode = 0; user_mock.stdout = b"testuser\n"
-    exists_mock = MagicMock(); exists_mock.returncode = 0
-    mocker.patch("scripts.bootstrap_project.safe_run", side_effect=[auth_mock, user_mock, exists_mock])
+    mocker.patch("scripts.bootstrap_project.safe_run", return_value=auth_mock)
 
     _apply_first_time_setup(stack_path)
 
@@ -147,19 +89,16 @@ def test_apply_first_time_updates_stack_toml(tmp_path, mocker):
     assert updated == {"conflicting_plugins": {}}
 
 
-def test_apply_first_time_calls_validate_gh_and_create_repo(tmp_path, mocker):
+def test_apply_first_time_calls_validate_gh(tmp_path, mocker):
     stack_path = tmp_path / "stack.toml"
     write_toml(stack_path, {"conflicting_plugins": {}})
 
     auth_mock = MagicMock(); auth_mock.returncode = 0
-    user_mock = MagicMock(); user_mock.returncode = 0; user_mock.stdout = b"testuser\n"
-    exists_mock = MagicMock(); exists_mock.returncode = 0
-    mock_run = mocker.patch("scripts.bootstrap_project.safe_run", side_effect=[auth_mock, user_mock, exists_mock])
+    mock_run = mocker.patch("scripts.bootstrap_project.safe_run", return_value=auth_mock)
 
     _apply_first_time_setup(stack_path)
 
-    # validate_gh_cli called first, then gh api /user, then repo check
-    assert mock_run.call_count == 3
+    assert mock_run.call_count == 1
     assert mock_run.call_args_list[0][0][0] == ["gh", "auth", "status"]
 
 

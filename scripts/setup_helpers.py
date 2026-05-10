@@ -42,6 +42,7 @@ _ALLOWED_DOMAINS: frozenset[str] = frozenset({
     "files.pythonhosted.org",
     "anthropic.com",
     "claude.com",
+    "api.github.com",
 })
 
 

@@ -50,49 +50,13 @@ def _validate_gh_cli() -> None:
         )
 
 
-def _get_gh_username() -> str:
-    """Return the authenticated GitHub username via gh CLI."""
-    result = safe_run(
-        ["gh", "api", "/user", "--jq", ".login"],
-        capture_output=True,
-        check=True,
-    )
-    return result.stdout.decode().strip()
-
-
-def _repo_exists(full_name: str) -> bool:
-    """Return True if the GitHub repo full_name (user/repo) exists."""
-    result = safe_run(
-        ["gh", "api", f"repos/{full_name}"],
-        capture_output=True,
-        check=False,
-    )
-    return result.returncode == 0
-
-
-def _create_snapshot_repo(repo_name: str) -> str:
-    """Create private GitHub repo if it doesn't exist. Returns full name (user/repo)."""
-    username = _get_gh_username()
-    full_name = f"{username}/{repo_name}"
-    if not _repo_exists(full_name):
-        safe_run(
-            ["gh", "repo", "create", repo_name, "--private"],
-            capture_output=True,
-            check=True,
-        )
-    return full_name
-
-
 def _apply_first_time_setup(
     stack_path: Path,
 ) -> None:
-    """Non-interactive first-time setup: validates gh CLI auth and creates snapshot repo."""
+    """Non-interactive first-time setup: validates gh CLI auth."""
     cfg = read_toml(stack_path)
 
     _validate_gh_cli()
-
-    repo_name = "dev-stack-snapshots"
-    _create_snapshot_repo(repo_name)
 
     write_toml(stack_path, cfg)
 
