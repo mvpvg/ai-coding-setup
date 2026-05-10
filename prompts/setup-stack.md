@@ -12,7 +12,7 @@ Run an AI-guided installation of the curated AI coding stack into the current ma
 
 3. **Resolve prereq gaps.** For each missing prereq, briefly explain what it is and offer install commands per OS (macOS / Linux / Windows). Wait for the user to install before continuing. Re-run audit to confirm.
 
-4. **Per-tool loop.** For each tool in `stack.toml` (sections in order: `base_tools`, `global_tools`, `mcp_servers`):
+4. **Per-tool loop.** For each tool in `stack.toml` sections in this order: `base_tools`, `global_tools`, `mcp_servers` — **skipping Tolaria until step 6**:
    - Skip tools marked `optional = true` by default — list them at the end and ask if the user wants any.
    - Re-check the tool's `prereqs`. If any are missing, skip the tool with a clear reason.
    - Explain what the tool does and ask for confirmation.
@@ -24,15 +24,7 @@ Run an AI-guided installation of the curated AI coding stack into the current ma
      | `npm` | `pnpm add -g <package>` |
      | `uv_tool` | `uv tool install "<package>[extras]"` (with extras if specified) or `uv tool install <package>` |
      | `github` | `git clone https://github.com/<repo>` then follow skill install steps |
-     | `desktop` | Show the `note` field as manual instruction; after user confirms install, write MCP config |
-
-   - **Tolaria MCP config:** After user confirms Tolaria is installed, ask for the vault path, then write:
-     ```bash
-     python setup_helpers.py write-mcp tolaria '{"type":"stdio","command":"node","args":["<TOLARIA_INSTALL_PATH>/mcp-server/index.js"],"env":{"VAULT_PATH":"<vault_path>","WS_UI_PORT":"9711"}}'
-     ```
-     Common install paths: macOS `~/Library/Application Support/tolaria`, Linux `~/.local/share/tolaria`.
-
-     **Vault tip:** This zip includes a pre-populated `tolaria_vault/` folder covering tool decisions, usage patterns, and setup postmortems. Offer to use it as the starting vault: point Tolaria at the extracted `tolaria_vault/` directory.
+     | `desktop` | Show the `note` field as manual instruction |
 
    - For credential-needing tools (`gh-token`, `postgres-conn-string`):
      - Ask the user for the value
@@ -50,9 +42,35 @@ Run an AI-guided installation of the curated AI coding stack into the current ma
    python setup_helpers.py apply-template hooks
    ```
 
-7. **Obscura (manual install):** Inform the user that Obscura requires a manual download from GitHub releases — refer them to `README.md` in this zip for exact steps.
+7. **Obscura (manual install):** Inform the user that Obscura requires a manual download — refer them to `README.md` in this folder for exact steps.
 
-8. **Done.** Suggest next steps: open a project in Claude Code, commit `.gitignore`, run a test.
+8. **Tolaria (last):** Install Tolaria desktop app and configure MCP — done last because it requires a vault path decision.
+   - Show the `note` from `stack.toml`: manual install from GitHub releases
+   - After user confirms Tolaria is installed, ask for the vault path
+   - Write MCP config:
+     ```bash
+     python setup_helpers.py write-mcp tolaria '{"type":"stdio","command":"node","args":["<TOLARIA_INSTALL_PATH>/mcp-server/index.js"],"env":{"VAULT_PATH":"<vault_path>","WS_UI_PORT":"9711"}}'
+     ```
+     Common install paths: macOS `~/Library/Application Support/tolaria`, Linux `~/.local/share/tolaria`
+   - **Vault tip:** This folder includes a pre-populated `tolaria_vault/` — offer to use it as the starting vault by pointing Tolaria at `<extracted_folder>/tolaria_vault/`.
+
+9. **Cleanup and archive.** After all tools are installed, clean up the installer files:
+   - Create `_archive/bootstrap_<YYYYMMDD_HHMMSS>/` in the current folder.
+   - Move into it: `templates/`, `tolaria_vault/`, `prompts/`, `setup_helpers.py`, `stack.toml`, `requirements.txt`, `README.md`, `AGENTS.md`, `CLAUDE.md`
+   - Keep in place: `.claude/` (hooks, commands, settings), `.gitignore`, `.mcp.json`
+   - Run these commands:
+     ```bash
+     ARCHIVE=_archive/bootstrap_$(date +%Y%m%d_%H%M%S)
+     mkdir -p "$ARCHIVE"
+     for item in templates tolaria_vault prompts setup_helpers.py stack.toml requirements.txt README.md AGENTS.md CLAUDE.md; do
+       [ -e "$item" ] && mv "$item" "$ARCHIVE/"
+     done
+     ```
+
+10. **Done.** Tell the user:
+    - Tools installed and global `~/.claude/CLAUDE.md` written
+    - Installer files archived to `_archive/bootstrap_.../`
+    - Suggest: open any project in Claude Code, run `mempalace wake-up`, run `ccc index .`
 
 ## Safety
 
@@ -64,4 +82,4 @@ Run an AI-guided installation of the curated AI coding stack into the current ma
 
 ## Re-runs
 
-This prompt is safe to re-run. It checks the current state and only installs what's missing. Run `/setup-stack` again any time to re-sync.
+This prompt is safe to re-run. If `_archive/` exists, setup was previously completed — re-running will only install tools that are missing. Run `/setup-stack` again any time to re-sync.

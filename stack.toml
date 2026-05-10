@@ -26,14 +26,6 @@ graphify = { source = "uv_tool", package = "graphifyy", prereqs = ["python", "uv
 context7 = { source = "npm", package = "@upstash/context7-mcp", prereqs = ["node", "pnpm"] }
 tolaria = { source = "desktop", note = "Manual install from https://github.com/refactoringhq/tolaria/releases — after install, configure MCP path below", prereqs = [] }
 
-[conflicting_plugins]
-everything_claude_code = { id = "everything-claude-code", reason = "Conflicts with Superpowers" }
-ui_ux_pro_max = { id = "ui-ux-pro-max-skill", reason = "Overlaps with frontend-design" }
-ruflo = { id = "ruflo", reason = "314 MCP tools — opposite of token-efficient" }
-sandcastle = { id = "sandcastle", reason = "Deferred until AFK runs are needed" }
-caveman_micro = { id = "caveman-micro", reason = "Redundant with caveman levels" }
-pacquet = { id = "pacquet", reason = "Alpha; revisit when pnpm officially adopts it" }
-lightpanda = { id = "lightpanda-io-browser", reason = "Obscura is more mature" }
 
 [security]
 allowlisted_domains = [
