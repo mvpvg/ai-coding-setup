@@ -11,6 +11,8 @@ from scripts.validate import (
     validate_url_reachable,
     validate_checksum,
     validate_path_safe,
+    validate_npm_package,
+    validate_pypi_package,
 )
 
 
@@ -134,3 +136,104 @@ def test_path_not_in_any_root(tmp_path):
     other = tmp_path / "other" / "file.txt"
     result = validate_path_safe(other, [root])
     assert result.passed is False
+
+
+# --- validate_npm_package ---
+
+def test_npm_package_exists():
+    def handler(req):
+        return httpx.Response(200, json={
+            "name": "react", "versions": {}, "dist-tags": {"latest": "18.0.0"}
+        })
+    result = validate_npm_package("react", _transport=httpx.MockTransport(handler))
+    assert result.passed is True
+    assert result.tool == "react"
+
+
+def test_npm_package_not_found():
+    def handler(req):
+        return httpx.Response(404, json={"error": "Not found"})
+    result = validate_npm_package(
+        "nonexistent-xyz-123", _transport=httpx.MockTransport(handler)
+    )
+    assert result.passed is False
+    assert "not found" in result.details.lower()
+
+
+def test_npm_version_exists():
+    def handler(req):
+        return httpx.Response(200, json={
+            "name": "react",
+            "versions": {"18.0.0": {}},
+            "dist-tags": {"latest": "18.0.0"},
+        })
+    result = validate_npm_package("react", "18.0.0", _transport=httpx.MockTransport(handler))
+    assert result.passed is True
+    assert "18.0.0" in result.details
+
+
+def test_npm_version_not_found():
+    def handler(req):
+        return httpx.Response(200, json={
+            "name": "react",
+            "versions": {"18.0.0": {}},
+            "dist-tags": {"latest": "18.0.0"},
+        })
+    result = validate_npm_package("react", "99.0.0", _transport=httpx.MockTransport(handler))
+    assert result.passed is False
+    assert "99.0.0" in result.details
+
+
+def test_npm_evidence_url_contains_package_name():
+    def handler(req):
+        return httpx.Response(200, json={"name": "lodash", "versions": {}})
+    result = validate_npm_package("lodash", _transport=httpx.MockTransport(handler))
+    assert "lodash" in result.evidence_url
+
+
+# --- validate_pypi_package ---
+
+def test_pypi_package_exists():
+    def handler(req):
+        return httpx.Response(200, json={
+            "info": {"name": "requests", "version": "2.31.0"}, "releases": {}
+        })
+    result = validate_pypi_package("requests", _transport=httpx.MockTransport(handler))
+    assert result.passed is True
+    assert result.tool == "requests"
+
+
+def test_pypi_package_not_found():
+    def handler(req):
+        return httpx.Response(404, json={"message": "Not Found"})
+    result = validate_pypi_package(
+        "nonexistent-xyz-123", _transport=httpx.MockTransport(handler)
+    )
+    assert result.passed is False
+    assert "not found" in result.details.lower()
+
+
+def test_pypi_version_exists():
+    def handler(req):
+        return httpx.Response(200, json={
+            "info": {"version": "2.31.0"}, "releases": {"2.31.0": []}
+        })
+    result = validate_pypi_package("requests", "2.31.0", _transport=httpx.MockTransport(handler))
+    assert result.passed is True
+
+
+def test_pypi_version_not_found():
+    def handler(req):
+        return httpx.Response(200, json={
+            "info": {"version": "2.31.0"}, "releases": {"2.31.0": []}
+        })
+    result = validate_pypi_package("requests", "0.0.1", _transport=httpx.MockTransport(handler))
+    assert result.passed is False
+    assert "0.0.1" in result.details
+
+
+def test_pypi_evidence_url_contains_package_name():
+    def handler(req):
+        return httpx.Response(200, json={"info": {"version": "1.0"}, "releases": {}})
+    result = validate_pypi_package("httpx", _transport=httpx.MockTransport(handler))
+    assert "httpx" in result.evidence_url

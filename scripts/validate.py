@@ -100,3 +100,85 @@ def validate_path_safe(path: Path, allowed_roots: list[Path]) -> ValidationResul
         ),
         evidence_url="",
     )
+
+
+def validate_npm_package(
+    name: str,
+    version: str | None = None,
+    *,
+    _transport: httpx.BaseTransport | None = None,
+) -> ValidationResult:
+    """Fetch from registry.npmjs.org/{name}. Checks package exists; if version given, verifies it."""
+    url = f"https://registry.npmjs.org/{name}"
+    check = "npm_package_exists" if version is None else "npm_version_exists"
+    try:
+        check_url(url)
+        with httpx.Client(timeout=10.0, transport=_transport) as client:
+            response = client.get(url)
+        if response.status_code == 404:
+            return ValidationResult(
+                passed=False, tool=name, check=check,
+                details=f"Package '{name}' not found on npm registry",
+                evidence_url=url,
+            )
+        response.raise_for_status()
+        data = response.json()
+        if version is not None:
+            versions = data.get("versions", {})
+            if version not in versions:
+                latest = data.get("dist-tags", {}).get("latest", "unknown")
+                return ValidationResult(
+                    passed=False, tool=name, check=check,
+                    details=f"Version '{version}' not found. Latest: {latest}",
+                    evidence_url=url,
+                )
+        return ValidationResult(
+            passed=True, tool=name, check=check,
+            details=f"Package exists{f', version {version} confirmed' if version else ''}",
+            evidence_url=url,
+        )
+    except DomainNotAllowedError as e:
+        return ValidationResult(passed=False, tool=name, check=check, details=str(e), evidence_url=url)
+    except httpx.HTTPError as e:
+        return ValidationResult(passed=False, tool=name, check=check, details=str(e), evidence_url=url)
+
+
+def validate_pypi_package(
+    name: str,
+    version: str | None = None,
+    *,
+    _transport: httpx.BaseTransport | None = None,
+) -> ValidationResult:
+    """Fetch from pypi.org/pypi/{name}/json. Checks package exists; if version given, verifies it."""
+    url = f"https://pypi.org/pypi/{name}/json"
+    check = "pypi_package_exists" if version is None else "pypi_version_exists"
+    try:
+        check_url(url)
+        with httpx.Client(timeout=10.0, transport=_transport) as client:
+            response = client.get(url)
+        if response.status_code == 404:
+            return ValidationResult(
+                passed=False, tool=name, check=check,
+                details=f"Package '{name}' not found on PyPI",
+                evidence_url=url,
+            )
+        response.raise_for_status()
+        data = response.json()
+        if version is not None:
+            releases = data.get("releases", {})
+            if version not in releases:
+                latest = data.get("info", {}).get("version", "unknown")
+                return ValidationResult(
+                    passed=False, tool=name, check=check,
+                    details=f"Version '{version}' not found. Latest: {latest}",
+                    evidence_url=url,
+                )
+        return ValidationResult(
+            passed=True, tool=name, check=check,
+            details=f"Package exists{f', version {version} confirmed' if version else ''}",
+            evidence_url=url,
+        )
+    except DomainNotAllowedError as e:
+        return ValidationResult(passed=False, tool=name, check=check, details=str(e), evidence_url=url)
+    except httpx.HTTPError as e:
+        return ValidationResult(passed=False, tool=name, check=check, details=str(e), evidence_url=url)
