@@ -141,3 +141,41 @@ def test_apply_template_global_claude_md(tmp_path, mocker):
 def test_apply_template_invalid_name_raises(tmp_path):
     with pytest.raises(ValueError, match="Unknown template"):
         apply_template("not_a_template", tmp_path)
+
+
+def test_write_opencode_mcp_config_creates_new(tmp_path):
+    from scripts.setup_helpers import write_opencode_mcp_config
+    write_opencode_mcp_config("context7", {"type": "stdio", "command": "pnpm"}, tmp_path)
+    data = json.loads((tmp_path / "opencode.json").read_text())
+    assert data["mcp"]["context7"]["command"] == "pnpm"
+
+
+def test_write_opencode_mcp_config_merges_existing(tmp_path):
+    from scripts.setup_helpers import write_opencode_mcp_config
+    (tmp_path / "opencode.json").write_text(json.dumps({"mcp": {"existing": {"type": "stdio"}}}))
+    write_opencode_mcp_config("tolaria", {"type": "stdio", "command": "node"}, tmp_path)
+    data = json.loads((tmp_path / "opencode.json").read_text())
+    assert "existing" in data["mcp"]
+    assert "tolaria" in data["mcp"]
+
+
+def test_install_opencode_command(tmp_path, mocker):
+    from scripts.setup_helpers import install_opencode_command, _opencode_config_dir
+    mocker.patch("scripts.setup_helpers._opencode_config_dir", return_value=tmp_path / "opencode")
+    dest = install_opencode_command("diagnose", "# diagnose skill content")
+    assert dest.exists()
+    assert dest.name == "diagnose.md"
+    assert dest.read_text() == "# diagnose skill content"
+
+
+def test_install_opencode_command_local(tmp_path):
+    from scripts.setup_helpers import install_opencode_command
+    import os
+    orig = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        dest = install_opencode_command("grill", "# grill content", global_install=False)
+        assert dest.resolve() == (tmp_path / ".opencode" / "commands" / "grill.md").resolve()
+        assert dest.read_text() == "# grill content"
+    finally:
+        os.chdir(orig)

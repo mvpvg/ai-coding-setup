@@ -9,23 +9,25 @@ package_manager = "pnpm"
 python_manager = "uv"
 default_caveman_level = "full"
 
+# platforms: "claude-code" = Claude Code only, "opencode" = OpenCode only, "all" = both
+# skills without platforms field default to "all"
+
 [base_tools]
-superpowers = { source = "marketplace", id = "superpowers@claude-plugins-official", prereqs = ["claude-cli"] }
-frontend_design = { source = "marketplace", id = "frontend-design@claude-plugins-official", prereqs = ["claude-cli"] }
-grill_with_docs = { source = "github", repo = "mattpocock/skills", path = "skills/engineering/grill-with-docs", prereqs = ["git"] }
-diagnose = { source = "github", repo = "mattpocock/skills", path = "skills/engineering/diagnose", prereqs = ["git"] }
-git_guardrails = { source = "github", repo = "mattpocock/skills", path = "skills/misc/git-guardrails-claude-code", prereqs = ["git"] }
+superpowers     = { source = "marketplace", id = "superpowers@claude-plugins-official",     prereqs = ["claude-cli"], platforms = ["claude-code"] }
+frontend_design = { source = "marketplace", id = "frontend-design@claude-plugins-official", prereqs = ["claude-cli"], platforms = ["claude-code"] }
+grill_with_docs = { source = "github", repo = "mattpocock/skills", path = "skills/engineering/grill-with-docs",        prereqs = ["git"],        platforms = ["all"] }
+diagnose        = { source = "github", repo = "mattpocock/skills", path = "skills/engineering/diagnose",               prereqs = ["git"],        platforms = ["all"] }
+git_guardrails  = { source = "github", repo = "mattpocock/skills", path = "skills/misc/git-guardrails-claude-code",    prereqs = ["git"],        platforms = ["all"] }
 
 [global_tools]
-cocoindex_code = { source = "uv_tool", package = "cocoindex-code", extras = "full", prereqs = ["python", "uv"] }
-mempalace = { source = "uv_tool", package = "mempalace", prereqs = ["python", "uv"] }
-playwright = { source = "npm", package = "@playwright/mcp", prereqs = ["node", "pnpm"] }
-graphify = { source = "uv_tool", package = "graphifyy", prereqs = ["python", "uv"], optional = true }
+cocoindex_code = { source = "uv_tool", package = "cocoindex-code", extras = "full", prereqs = ["python", "uv"], platforms = ["all"] }
+mempalace      = { source = "uv_tool", package = "mempalace",                       prereqs = ["python", "uv"], platforms = ["all"] }
+playwright     = { source = "npm",     package = "@playwright/mcp",                 prereqs = ["node", "pnpm"], platforms = ["all"] }
+graphify       = { source = "uv_tool", package = "graphifyy",                       prereqs = ["python", "uv"], platforms = ["all"], optional = true }
 
 [mcp_servers]
-context7 = { source = "npm", package = "@upstash/context7-mcp", prereqs = ["node", "pnpm"] }
-tolaria = { source = "desktop", note = "Manual install from https://github.com/refactoringhq/tolaria/releases — after install, configure MCP path below", prereqs = [] }
-
+context7 = { source = "npm",     package = "@upstash/context7-mcp", prereqs = ["node", "pnpm"], platforms = ["all"] }
+tolaria  = { source = "desktop", note = "Manual install from https://github.com/refactoringhq/tolaria/releases — after install, configure MCP path below", prereqs = [], platforms = ["all"] }
 
 [security]
 allowlisted_domains = [

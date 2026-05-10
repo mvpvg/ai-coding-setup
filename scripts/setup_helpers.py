@@ -26,6 +26,7 @@ _PREREQ_COMMANDS: dict[str, list[str]] = {
     "postgres": ["psql", "--version"],
     "git": ["git", "--version"],
     "claude-cli": ["claude", "--version"],
+    "opencode-cli": ["opencode", "--version"],
     "pnpm": ["pnpm", "--version"],
     "npm": ["npm", "--version"],
     "yarn": ["yarn", "--version"],
@@ -44,6 +45,14 @@ _ALLOWED_DOMAINS: frozenset[str] = frozenset({
     "claude.com",
     "api.github.com",
 })
+
+# Global OpenCode config directory
+def _opencode_config_dir() -> Path:
+    if sys.platform == "win32":
+        base = os.environ.get("APPDATA", "~")
+    else:
+        base = os.environ.get("XDG_CONFIG_HOME", "~/.config")
+    return Path(base).expanduser() / "opencode"
 
 
 def _check_python_311() -> bool:
@@ -127,7 +136,7 @@ def download_with_verify(url: str, dest: Path, expected_sha256: str) -> None:
 
 
 def write_mcp_config(name: str, config: dict[str, Any], project_dir: Path) -> None:
-    """Merge an MCP server config entry into project_dir/.mcp.json."""
+    """Merge an MCP server config entry into project_dir/.mcp.json (Claude Code format)."""
     mcp_path = project_dir / ".mcp.json"
     if mcp_path.exists():
         data = json.loads(mcp_path.read_text(encoding="utf-8"))
@@ -137,6 +146,45 @@ def write_mcp_config(name: str, config: dict[str, Any], project_dir: Path) -> No
         data["mcpServers"] = {}
     data["mcpServers"][name] = config
     mcp_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def write_opencode_mcp_config(name: str, config: dict[str, Any], project_dir: Path | None = None) -> None:
+    """Merge an MCP server config entry into OpenCode's config file.
+
+    Writes to project_dir/opencode.json if project_dir given, else ~/.config/opencode/opencode.json.
+    OpenCode MCP format: {"mcp": {"<name>": {<config>}}}
+    """
+    if project_dir is not None:
+        config_path = project_dir / "opencode.json"
+    else:
+        cfg_dir = _opencode_config_dir()
+        cfg_dir.mkdir(parents=True, exist_ok=True)
+        config_path = cfg_dir / "opencode.json"
+
+    if config_path.exists():
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+    else:
+        data = {}
+    if "mcp" not in data:
+        data["mcp"] = {}
+    data["mcp"][name] = config
+    config_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def install_opencode_command(name: str, content: str, global_install: bool = True) -> Path:
+    """Write a custom OpenCode slash command.
+
+    global_install=True  → ~/.config/opencode/commands/<name>.md
+    global_install=False → .opencode/commands/<name>.md (current dir)
+    """
+    if global_install:
+        commands_dir = _opencode_config_dir() / "commands"
+    else:
+        commands_dir = Path(".opencode") / "commands"
+    commands_dir.mkdir(parents=True, exist_ok=True)
+    dest = commands_dir / f"{name}.md"
+    dest.write_text(content, encoding="utf-8")
+    return dest
 
 
 def apply_template(template_name: str, project_dir: Path, project_type: str = "base") -> None:
@@ -187,6 +235,18 @@ def main() -> None:
     wm.add_argument("config_json", help="JSON string of MCP server config")
     wm.add_argument("--project-dir", default=".")
 
+    wom = sub.add_parser("write-opencode-mcp")
+    wom.add_argument("name")
+    wom.add_argument("config_json", help="JSON string of MCP server config")
+    wom.add_argument("--project-dir", default=None,
+                     help="Write to project opencode.json; omit for global ~/.config/opencode/opencode.json")
+
+    ioc = sub.add_parser("install-opencode-command")
+    ioc.add_argument("name", help="Command name (without .md)")
+    ioc.add_argument("file", help="Path to markdown file to install as command")
+    ioc.add_argument("--local", action="store_true",
+                     help="Install to .opencode/commands/ instead of global config")
+
     at = sub.add_parser("apply-template")
     at.add_argument("template_name", choices=["hooks", "global_claude_md"])
     at.add_argument("--project-type", default="base")
@@ -205,6 +265,14 @@ def main() -> None:
     elif args.cmd == "write-mcp":
         config = json.loads(args.config_json)
         write_mcp_config(args.name, config, Path(args.project_dir))
+    elif args.cmd == "write-opencode-mcp":
+        config = json.loads(args.config_json)
+        project_dir = Path(args.project_dir) if args.project_dir else None
+        write_opencode_mcp_config(args.name, config, project_dir)
+    elif args.cmd == "install-opencode-command":
+        content = Path(args.file).read_text(encoding="utf-8")
+        dest = install_opencode_command(args.name, content, global_install=not args.local)
+        print(f"Installed: {dest}")
     elif args.cmd == "apply-template":
         apply_template(args.template_name, Path(args.project_dir), args.project_type)
 
