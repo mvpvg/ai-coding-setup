@@ -1,4 +1,3 @@
-import pytest
 from scripts.update_stack import ToolDiff, classify_tier, compute_diff
 
 
@@ -52,7 +51,9 @@ def _make_stack(section="base_tools", pinned_version=None):
     cfg = {"source": "npm", "package": "pkg"}
     if pinned_version is not None:
         cfg["pinned_version"] = pinned_version
-    return {section: {"mytool": cfg}, "mcp_servers": {}, "per_project": {}}
+    base = {"base_tools": {}, "mcp_servers": {}, "per_project": {}}
+    base[section] = {"mytool": cfg}
+    return base
 
 
 def _make_research(tool_id="mytool", version="1.0.0", breaking=None, status="active",

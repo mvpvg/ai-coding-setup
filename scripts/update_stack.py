@@ -51,7 +51,7 @@ def compute_diff(
     stack: dict[str, Any],
     research_data: dict[str, Any],
 ) -> list[ToolDiff]:
-    tool_map: dict[str, tuple[str, dict]] = {}
+    tool_map: dict[str, tuple[str, dict[str, Any]]] = {}
     for section in ("base_tools", "mcp_servers", "per_project"):
         for tool_id, cfg in stack.get(section, {}).items():
             tool_map[tool_id] = (section, cfg)
