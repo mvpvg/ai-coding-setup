@@ -29,6 +29,12 @@ def test_opencode_config_dir_macos(monkeypatch, tmp_path):
     assert platform_paths.opencode_config_dir() == tmp_path / ".opencode"
 
 
+def test_opencode_config_dir_linux(monkeypatch, tmp_path):
+    monkeypatch.setattr(platform, "system", lambda: "Linux")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    assert platform_paths.opencode_config_dir() == tmp_path / ".opencode"
+
+
 def test_opencode_config_dir_windows(monkeypatch, tmp_path):
     monkeypatch.setattr(platform, "system", lambda: "Windows")
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
