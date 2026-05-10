@@ -1,1 +1,96 @@
-{"schema_version": "1", "tools": []}
+{
+  "schema_version": "1",
+  "generated_at": "2026-05-10T13:53:22.369942+00:00",
+  "tools": [
+    {
+      "id": "superpowers",
+      "section": "base_tools",
+      "source": "marketplace",
+      "pinned_version": null
+    },
+    {
+      "id": "frontend_design",
+      "section": "base_tools",
+      "source": "marketplace",
+      "pinned_version": null
+    },
+    {
+      "id": "caveman",
+      "section": "base_tools",
+      "source": "github",
+      "pinned_version": null
+    },
+    {
+      "id": "mattpocock_grill",
+      "section": "base_tools",
+      "source": "github",
+      "pinned_version": null
+    },
+    {
+      "id": "mattpocock_diagnose",
+      "section": "base_tools",
+      "source": "github",
+      "pinned_version": null
+    },
+    {
+      "id": "git_guardrails",
+      "section": "base_tools",
+      "source": "github",
+      "pinned_version": null
+    },
+    {
+      "id": "cocoindex_code",
+      "section": "mcp_servers",
+      "source": "pypi",
+      "pinned_version": null
+    },
+    {
+      "id": "context7",
+      "section": "mcp_servers",
+      "source": "npm",
+      "pinned_version": null
+    },
+    {
+      "id": "github",
+      "section": "mcp_servers",
+      "source": "official",
+      "pinned_version": null
+    },
+    {
+      "id": "postgres",
+      "section": "mcp_servers",
+      "source": "official",
+      "pinned_version": null
+    },
+    {
+      "id": "filesystem",
+      "section": "mcp_servers",
+      "source": "official",
+      "pinned_version": null
+    },
+    {
+      "id": "playwright",
+      "section": "per_project",
+      "source": "npm",
+      "pinned_version": null
+    },
+    {
+      "id": "gitnexus",
+      "section": "per_project",
+      "source": "npm",
+      "pinned_version": null
+    },
+    {
+      "id": "graphify",
+      "section": "per_project",
+      "source": "pypi",
+      "pinned_version": null
+    },
+    {
+      "id": "obscura",
+      "section": "per_project",
+      "source": "github_release",
+      "pinned_version": null
+    }
+  ]
+}
