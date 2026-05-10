@@ -254,3 +254,146 @@ def test_pypi_disallowed_domain():
         result = validate_pypi_package("requests")
         assert result.passed is False
         assert "domain not allowed" in result.details
+
+
+from scripts.validate import (
+    validate_github_repo,
+    validate_github_release,
+    validate_research_results,
+)
+
+
+# --- validate_github_repo ---
+
+def test_github_repo_active(mocker):
+    mock = MagicMock()
+    mock.returncode = 0
+    mock.stdout = json.dumps({"name": "myrepo", "archived": False}).encode()
+    mock.stderr = b""
+    mocker.patch("scripts.validate.safe_run", return_value=mock)
+    result = validate_github_repo("owner", "myrepo")
+    assert result.passed is True
+    assert result.tool == "owner/myrepo"
+
+
+def test_github_repo_archived(mocker):
+    mock = MagicMock()
+    mock.returncode = 0
+    mock.stdout = json.dumps({"name": "oldrepo", "archived": True}).encode()
+    mock.stderr = b""
+    mocker.patch("scripts.validate.safe_run", return_value=mock)
+    result = validate_github_repo("owner", "oldrepo")
+    assert result.passed is False
+    assert "archived" in result.details.lower()
+
+
+def test_github_repo_not_found(mocker):
+    mock = MagicMock()
+    mock.returncode = 1
+    mock.stdout = b""
+    mock.stderr = b"Not Found"
+    mocker.patch("scripts.validate.safe_run", return_value=mock)
+    result = validate_github_repo("owner", "notexist")
+    assert result.passed is False
+
+
+# --- validate_github_release ---
+
+def test_github_release_latest(mocker):
+    mock = MagicMock()
+    mock.returncode = 0
+    mock.stdout = json.dumps({"tag_name": "v1.2.3", "name": "Release 1.2.3"}).encode()
+    mock.stderr = b""
+    mocker.patch("scripts.validate.safe_run", return_value=mock)
+    result = validate_github_release("owner", "repo")
+    assert result.passed is True
+    assert "v1.2.3" in result.details
+
+
+def test_github_release_specific_tag(mocker):
+    mock = MagicMock()
+    mock.returncode = 0
+    mock.stdout = json.dumps({"tag_name": "v1.0.0"}).encode()
+    mock.stderr = b""
+    mocker.patch("scripts.validate.safe_run", return_value=mock)
+    result = validate_github_release("owner", "repo", tag="v1.0.0")
+    assert result.passed is True
+
+
+def test_github_release_not_found(mocker):
+    mock = MagicMock()
+    mock.returncode = 1
+    mock.stdout = b""
+    mock.stderr = b"Not Found"
+    mocker.patch("scripts.validate.safe_run", return_value=mock)
+    result = validate_github_release("owner", "repo", tag="v9.9.9")
+    assert result.passed is False
+
+
+# --- validate_research_results ---
+
+def test_research_results_wrong_schema_version():
+    data = {"schema_version": "99", "tools": []}
+    results = validate_research_results(data)
+    assert any(not r.passed for r in results)
+    assert any("schema_version" in r.check for r in results)
+
+
+def test_research_results_missing_fields():
+    data = {
+        "schema_version": "1",
+        "researched_at": "2026-05-10T00:00:00Z",
+        "tools": [{"id": "mytool"}],  # missing required fields
+    }
+    results = validate_research_results(data)
+    assert any(not r.passed for r in results)
+
+
+def test_research_results_all_null_urls():
+    data = {
+        "schema_version": "1",
+        "researched_at": "2026-05-10T00:00:00Z",
+        "tools": [{
+            "id": "mytool",
+            "verified": True,
+            "current_version": None,
+            "version_source_url": None,
+            "install_method": None,
+            "install_method_source_url": None,
+            "checksum_sha256": None,
+            "checksum_source_url": None,
+            "breaking_changes_since_pinned": [],
+            "deprecation_status": "active",
+            "security_advisories": [],
+            "conflicts_with": [],
+            "notes": "",
+        }],
+    }
+    results = validate_research_results(data)
+    assert all(r.passed for r in results)
+
+
+def test_research_results_validates_urls():
+    def handler(req):
+        return httpx.Response(200)
+    data = {
+        "schema_version": "1",
+        "researched_at": "2026-05-10T00:00:00Z",
+        "tools": [{
+            "id": "mytool",
+            "verified": True,
+            "current_version": "1.0.0",
+            "version_source_url": "https://github.com/owner/repo",
+            "install_method": "npm install mytool",
+            "install_method_source_url": "https://github.com/owner/repo#readme",
+            "checksum_sha256": None,
+            "checksum_source_url": None,
+            "breaking_changes_since_pinned": [],
+            "deprecation_status": "active",
+            "security_advisories": [],
+            "conflicts_with": [],
+            "notes": "",
+        }],
+    }
+    results = validate_research_results(data, _transport=httpx.MockTransport(handler))
+    assert all(r.passed for r in results)

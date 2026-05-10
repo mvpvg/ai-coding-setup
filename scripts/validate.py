@@ -11,6 +11,7 @@ import httpx
 
 from scripts.lib.allowlist import check_url, DomainNotAllowedError
 from scripts.lib.checksums import verify_file, ChecksumError
+from scripts.lib.subprocess_safe import run as safe_run, SubprocessError
 
 
 @dataclass(frozen=True)
@@ -182,3 +183,135 @@ def validate_pypi_package(
         return ValidationResult(passed=False, tool=name, check=check, details=str(e), evidence_url=url)
     except httpx.HTTPError as e:
         return ValidationResult(passed=False, tool=name, check=check, details=str(e), evidence_url=url)
+
+
+def validate_github_repo(owner: str, repo: str) -> ValidationResult:
+    """gh api repos/{owner}/{repo} — must return 200, must not be archived."""
+    endpoint = f"repos/{owner}/{repo}"
+    evidence_url = f"https://api.github.com/{endpoint}"
+    check = "github_repo_not_archived"
+    try:
+        result = safe_run(["gh", "api", endpoint], capture_output=True, check=False)
+        if result.returncode != 0:
+            return ValidationResult(
+                passed=False, tool=f"{owner}/{repo}", check=check,
+                details=f"gh api failed: {result.stderr.decode().strip()}",
+                evidence_url=evidence_url,
+            )
+        data = json.loads(result.stdout)
+        if data.get("archived"):
+            return ValidationResult(
+                passed=False, tool=f"{owner}/{repo}", check=check,
+                details="Repository is archived",
+                evidence_url=evidence_url,
+            )
+        return ValidationResult(
+            passed=True, tool=f"{owner}/{repo}", check=check,
+            details="Repository exists and is not archived",
+            evidence_url=evidence_url,
+        )
+    except SubprocessError as e:
+        return ValidationResult(
+            passed=False, tool=f"{owner}/{repo}", check=check,
+            details=str(e), evidence_url=evidence_url,
+        )
+
+
+def validate_github_release(
+    owner: str,
+    repo: str,
+    tag: str | None = None,
+) -> ValidationResult:
+    """gh api repos/{owner}/{repo}/releases/latest or /tags/{tag}."""
+    endpoint = (
+        f"repos/{owner}/{repo}/releases/tags/{tag}"
+        if tag
+        else f"repos/{owner}/{repo}/releases/latest"
+    )
+    evidence_url = f"https://api.github.com/{endpoint}"
+    check = "github_release_exists"
+    try:
+        result = safe_run(["gh", "api", endpoint], capture_output=True, check=False)
+        if result.returncode != 0:
+            return ValidationResult(
+                passed=False, tool=f"{owner}/{repo}", check=check,
+                details=f"gh api failed: {result.stderr.decode().strip()}",
+                evidence_url=evidence_url,
+            )
+        data = json.loads(result.stdout)
+        tag_name = data.get("tag_name", "unknown")
+        return ValidationResult(
+            passed=True, tool=f"{owner}/{repo}", check=check,
+            details=f"Release found: {tag_name}",
+            evidence_url=evidence_url,
+        )
+    except SubprocessError as e:
+        return ValidationResult(
+            passed=False, tool=f"{owner}/{repo}", check=check,
+            details=str(e), evidence_url=evidence_url,
+        )
+
+
+_SCHEMA_VERSION = "1"
+_REQUIRED_TOOL_FIELDS: frozenset[str] = frozenset({
+    "id", "verified", "current_version", "version_source_url",
+    "install_method", "install_method_source_url",
+})
+
+
+def validate_research_results(
+    json_data: dict[str, Any],
+    *,
+    _transport: httpx.BaseTransport | None = None,
+) -> list[ValidationResult]:
+    """Schema check, then runs per-tool URL validators in parallel."""
+    results: list[ValidationResult] = []
+
+    if json_data.get("schema_version") != _SCHEMA_VERSION:
+        results.append(ValidationResult(
+            passed=False, tool="__schema__", check="schema_version",
+            details=f"Expected schema_version '1', got '{json_data.get('schema_version')}'",
+            evidence_url="",
+        ))
+        return results
+
+    tools = json_data.get("tools", [])
+    if not isinstance(tools, list):
+        results.append(ValidationResult(
+            passed=False, tool="__schema__", check="tools_field",
+            details="'tools' must be a list",
+            evidence_url="",
+        ))
+        return results
+
+    def _validate_tool(tool: dict[str, Any]) -> list[ValidationResult]:
+        tool_results: list[ValidationResult] = []
+        tool_id = tool.get("id", "unknown")
+
+        missing = _REQUIRED_TOOL_FIELDS - set(tool.keys())
+        if missing:
+            tool_results.append(ValidationResult(
+                passed=False, tool=tool_id, check="required_fields",
+                details=f"Missing fields: {sorted(missing)}",
+                evidence_url="",
+            ))
+            return tool_results
+
+        for field in ("version_source_url", "install_method_source_url"):
+            url = tool.get(field)
+            if url:
+                tool_results.append(
+                    validate_url_reachable(url, _transport=_transport)
+                )
+
+        return tool_results
+
+    if not tools:
+        return results
+
+    with ThreadPoolExecutor() as executor:
+        futures = {executor.submit(_validate_tool, tool): tool for tool in tools}
+        for future in as_completed(futures):
+            results.extend(future.result())
+
+    return results
