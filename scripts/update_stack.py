@@ -366,7 +366,10 @@ def cmd_audit_push(
         "content": content_b64,
     }
     if sha_result.returncode == 0:
-        sha = sha_result.stdout.decode().strip().strip('"')
+        try:
+            sha = json.loads(sha_result.stdout.decode().strip())
+        except (ValueError, TypeError):
+            sha = None
         if sha:
             payload["sha"] = sha
 

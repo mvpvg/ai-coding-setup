@@ -683,7 +683,7 @@ def _write_stack_with_audit(path, snap_dir, audit_log_path="~/.claude/audit.log"
     })
 
 
-def test_cmd_audit_push_calls_gh_api(tmp_path, mocker):
+def test_cmd_audit_push_prints_repo_on_success(tmp_path, mocker):
     snap_dir = tmp_path / "snaps"
     snap_dir.mkdir()
     stack_path = tmp_path / "stack.toml"
@@ -755,9 +755,11 @@ def test_cmd_audit_push_includes_sha_when_file_exists(tmp_path, mocker):
     # Verify the PUT call's input file contains the sha field
     put_call_args = safe_run_mock.call_args_list[2]
     input_file = put_call_args.args[0][-1]  # last arg is the temp file path
-    payload = json.loads(Path(input_file).read_text())
-    assert payload.get("sha") == "abc123"
-    Path(input_file).unlink(missing_ok=True)
+    try:
+        payload = json.loads(Path(input_file).read_text())
+        assert payload.get("sha") == "abc123"
+    finally:
+        Path(input_file).unlink(missing_ok=True)
 
 
 def test_cmd_restore_missing_dir_raises(tmp_path):
