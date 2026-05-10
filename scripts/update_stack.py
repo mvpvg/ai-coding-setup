@@ -133,22 +133,6 @@ def cmd_check(stack_path: Path, *, console: Console | None = None) -> None:
     last_validated = cfg.get("meta", {}).get("last_validated", "")
     _console.print(f"Last validated: {last_validated or 'never'}")
 
-    snapshot_dir_str = cfg.get("paths", {}).get("snapshot_dir", "")
-    if not snapshot_dir_str:
-        _console.print("Last snapshot: snapshot_dir not configured")
-        return
-
-    snapshot_dir = Path(snapshot_dir_str)
-    if not snapshot_dir.exists():
-        _console.print("Last snapshot: none (directory does not exist)")
-        return
-
-    zips = sorted(snapshot_dir.glob("*.zip"), key=lambda p: p.name)
-    if zips:
-        _console.print(f"Last snapshot: {zips[-1].name}")
-    else:
-        _console.print("Last snapshot: none")
-
 
 def cmd_update(
     stack_path: Path,

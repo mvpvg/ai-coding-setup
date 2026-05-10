@@ -266,29 +266,6 @@ def test_cmd_check_no_last_validated_shows_never(tmp_path):
     assert "never" in buf.getvalue()
 
 
-def test_cmd_check_shows_last_snapshot(tmp_path):
-    stack_path = tmp_path / "stack.toml"
-    snap_dir = tmp_path / "snaps"
-    snap_dir.mkdir()
-    (snap_dir / "2026-05-10_12-00-00_manual.zip").touch()
-    write_toml(stack_path, {
-        "meta": {"schema_version": "1", "created": "", "last_validated": ""},
-        "paths": {"snapshot_dir": str(snap_dir), "tolaria_vault": ""},
-        "github": {"private_snapshot_repo": "snaps"},
-        "base_tools": {}, "mcp_servers": {}, "per_project": {},
-    })
-    console, buf = _make_console()
-    cmd_check(stack_path, console=console)
-    assert "2026-05-10_12-00-00_manual.zip" in buf.getvalue()
-
-
-def test_cmd_check_no_snapshot_dir_configured(tmp_path):
-    stack_path = tmp_path / "stack.toml"
-    _write_stack(stack_path)
-    console, buf = _make_console()
-    cmd_check(stack_path, console=console)
-    assert "not configured" in buf.getvalue()
-
 
 def _write_minimal_stack(path, snapshot_dir="", tolaria_vault=""):
     write_toml(path, {
