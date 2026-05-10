@@ -1,10 +1,6 @@
-"""update_stack.py — stack management: check, update, snapshot, restore, audit."""
+"""update_stack.py — stack management: check, update, generate."""
 from __future__ import annotations
-import base64
-import copy
 import json
-import os
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
@@ -13,13 +9,9 @@ from rich import box
 from rich.console import Console
 from rich.table import Table
 
-from scripts.audit import tail as _audit_tail
 from scripts.lib.config import read_toml, write_toml
-from scripts.lib.subprocess_safe import run as safe_run
 from scripts.research import parse_research_results
 from scripts.generate_manifest import generate_manifest
-from scripts.snapshot import create_snapshot, prune_snapshots, restore_snapshot
-from scripts.tolaria_writer import write_decision_note
 
 
 @dataclass
@@ -158,98 +150,6 @@ def cmd_check(stack_path: Path, *, console: Console | None = None) -> None:
         _console.print("Last snapshot: none")
 
 
-def cmd_snapshot(
-    stack_path: Path,
-    tag: str = "",
-    *,
-    console: Console | None = None,
-) -> None:
-    _console = console or Console()
-    cfg = read_toml(stack_path)
-    snapshot_dir_str = cfg.get("paths", {}).get("snapshot_dir", "")
-    if not snapshot_dir_str:
-        raise RuntimeError("snapshot_dir not configured in stack.toml — run bootstrap first")
-    snapshot_dir = Path(snapshot_dir_str)
-    tolaria_vault_str = cfg.get("paths", {}).get("tolaria_vault", "")
-    tolaria_vault = Path(tolaria_vault_str) if tolaria_vault_str else None
-    zip_path = create_snapshot(snapshot_dir, reason="manual", tag=tag, tolaria_vault=tolaria_vault)
-    _console.print(f"Snapshot created: {zip_path.name}")
-
-
-def cmd_snapshots_list(stack_path: Path, *, console: Console | None = None) -> None:
-    _console = console or Console()
-    cfg = read_toml(stack_path)
-    snapshot_dir_str = cfg.get("paths", {}).get("snapshot_dir", "")
-    if not snapshot_dir_str:
-        _console.print("snapshot_dir not configured")
-        return
-    snapshot_dir = Path(snapshot_dir_str)
-    if not snapshot_dir.exists():
-        _console.print("Snapshot directory does not exist")
-        return
-    zips = sorted(snapshot_dir.glob("*.zip"), key=lambda p: p.name)
-    if not zips:
-        _console.print("No snapshots found")
-        return
-    table = Table("Name", "Size", title="Snapshots", box=box.SIMPLE)
-    for z in zips:
-        size_kb = z.stat().st_size // 1024
-        table.add_row(z.name, f"{size_kb} KB")
-    _console.print(table)
-
-
-def cmd_snapshots_prune(stack_path: Path, *, console: Console | None = None) -> None:
-    _console = console or Console()
-    cfg = read_toml(stack_path)
-    snapshot_dir_str = cfg.get("paths", {}).get("snapshot_dir", "")
-    if not snapshot_dir_str:
-        raise RuntimeError("snapshot_dir not configured in stack.toml")
-    snapshot_dir = Path(snapshot_dir_str)
-    deleted = prune_snapshots(snapshot_dir)
-    if deleted:
-        for p in deleted:
-            _console.print(f"Pruned: {p.name}")
-    else:
-        _console.print("Nothing to prune")
-
-
-def _apply_update(
-    stack_path: Path,
-    stack: dict[str, Any],
-    diffs: list[ToolDiff],
-    snapshot_dir: Path,
-    tolaria_vault: Path | None,
-    console: Console,
-) -> None:
-    original_stack = copy.deepcopy(stack)
-    pre_zip = create_snapshot(snapshot_dir, reason="pre-update")
-
-    try:
-        for diff in diffs:
-            if diff.new_version is not None:
-                stack[diff.section][diff.tool_id]["pinned_version"] = diff.new_version
-        write_toml(stack_path, stack)
-
-        if tolaria_vault is not None:
-            for diff in diffs:
-                write_decision_note(
-                    tolaria_vault,
-                    diff.tool_id,
-                    diff.new_version or "",
-                    "stack update",
-                    previous_version=diff.current_version,
-                )
-
-        create_snapshot(snapshot_dir, reason="post-update")
-
-    except Exception:
-        try:
-            restore_snapshot(pre_zip, snapshot_dir)
-        finally:
-            write_toml(stack_path, original_stack)
-        raise
-
-
 def cmd_update(
     stack_path: Path,
     research_path: Path,
@@ -267,127 +167,11 @@ def cmd_update(
     if not apply or not diffs:
         return
 
-    snapshot_dir_str = cfg.get("paths", {}).get("snapshot_dir", "")
-    if not snapshot_dir_str:
-        raise RuntimeError("snapshot_dir not configured in stack.toml — run bootstrap first")
-    snapshot_dir = Path(snapshot_dir_str)
-
-    tolaria_vault_str = cfg.get("paths", {}).get("tolaria_vault", "")
-    tolaria_vault = Path(tolaria_vault_str) if tolaria_vault_str else None
-
-    _apply_update(stack_path, cfg, diffs, snapshot_dir, tolaria_vault, _console)
+    for diff in diffs:
+        if diff.new_version is not None:
+            cfg[diff.section][diff.tool_id]["pinned_version"] = diff.new_version
+    write_toml(stack_path, cfg)
     _console.print(f"Applied {len(diffs)} update{'s' if len(diffs) != 1 else ''}.")
-
-
-def cmd_restore(
-    stack_path: Path,
-    *,
-    latest: bool = False,
-    timestamp: str | None = None,
-    console: Console | None = None,
-) -> None:
-    _console = console or Console()
-    cfg = read_toml(stack_path)
-    snapshot_dir_str = cfg.get("paths", {}).get("snapshot_dir", "")
-    if not snapshot_dir_str:
-        raise RuntimeError("snapshot_dir not configured in stack.toml")
-    snapshot_dir = Path(snapshot_dir_str)
-    if not snapshot_dir.exists():
-        raise RuntimeError(f"Snapshot directory does not exist: {snapshot_dir}")
-    zips = sorted(snapshot_dir.glob("*.zip"), key=lambda p: p.name)
-
-    if not zips:
-        raise RuntimeError(f"No snapshots found in {snapshot_dir}")
-
-    if latest:
-        zip_path = zips[-1]
-    elif timestamp:
-        matches = [z for z in zips if z.name.startswith(timestamp)]
-        if not matches:
-            raise RuntimeError(f"No snapshot matching timestamp '{timestamp}'")
-        zip_path = matches[-1]
-    else:
-        raise RuntimeError("Specify --latest or a timestamp prefix")
-
-    _console.print(f"Restoring from {zip_path.name} ...")
-    restore_snapshot(zip_path, snapshot_dir)
-    _console.print("Restore complete.")
-
-
-def cmd_audit_tail(
-    n: int = 20,
-    *,
-    log_path: Path | None = None,
-    console: Console | None = None,
-) -> None:
-    _console = console or Console()
-    entries = _audit_tail(n, log_path=log_path)
-    if not entries:
-        _console.print("No audit log entries found.")
-        return
-    for entry in entries:
-        _console.print(json.dumps(entry))
-
-
-def cmd_audit_push(
-    stack_path: Path,
-    *,
-    log_path: Path | None = None,
-    console: Console | None = None,
-) -> None:
-    _console = console or Console()
-    cfg = read_toml(stack_path)
-    repo_name = cfg.get("github", {}).get("private_snapshot_repo", "dev-stack-snapshots")
-    username_result = safe_run(
-        ["gh", "api", "/user", "--jq", ".login"],
-        capture_output=True,
-        check=True,
-    )
-    username = username_result.stdout.decode().strip()
-    full_repo = f"{username}/{repo_name}"
-
-    audit_log_str = cfg.get("security", {}).get("audit_log_path", "~/.claude/audit.log")
-    path = log_path or Path(audit_log_str).expanduser()
-
-    if not path.exists():
-        _console.print("No audit log found — nothing to push.")
-        return
-
-    content_b64 = base64.b64encode(path.read_bytes()).decode()
-    path_in_repo = "audit.log"
-
-    sha_result = safe_run(
-        ["gh", "api", f"repos/{full_repo}/contents/{path_in_repo}", "--jq", ".sha"],
-        capture_output=True,
-        check=False,
-    )
-
-    payload: dict[str, Any] = {
-        "message": "chore: update audit log",
-        "content": content_b64,
-    }
-    if sha_result.returncode == 0:
-        try:
-            sha = json.loads(sha_result.stdout.decode().strip())
-        except (ValueError, TypeError):
-            sha = None
-        if sha:
-            payload["sha"] = sha
-
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-        json.dump(payload, f)
-        tmpfile = f.name
-    try:
-        safe_run(
-            ["gh", "api", f"repos/{full_repo}/contents/{path_in_repo}",
-             "--method", "PUT", "--input", tmpfile],
-            capture_output=True,
-            check=True,
-        )
-    finally:
-        os.unlink(tmpfile)
-
-    _console.print(f"Audit log pushed to {full_repo}/{path_in_repo}.")
 
 
 def cmd_generate_manifest(
@@ -420,26 +204,7 @@ if __name__ == "__main__":
     update_p.add_argument("--research", default="research_results.json",
                           help="Path to research_results.json")
 
-    snap_p = sub.add_parser("snapshot", help="Create a manual snapshot")
-    snap_p.add_argument("--tag", default="", help="Optional tag for snapshot name")
-
-    snaps_p = sub.add_parser("snapshots", help="List or prune snapshots")
-    snaps_sub = snaps_p.add_subparsers(dest="snaps_cmd")
-    snaps_sub.add_parser("list", help="List snapshots")
-    snaps_sub.add_parser("prune", help="Delete snapshots beyond retention limit")
-
-    restore_p = sub.add_parser("restore", help="Restore a snapshot")
-    restore_p.add_argument("--latest", action="store_true", help="Restore most recent snapshot")
-    restore_p.add_argument("timestamp", nargs="?", default=None,
-                           help="Timestamp prefix to match (e.g. 2026-05-10)")
-
     sub.add_parser("generate", help="Regenerate MANIFEST.json and STACK.md from stack.toml")
-
-    audit_p = sub.add_parser("audit", help="Audit log operations")
-    audit_sub = audit_p.add_subparsers(dest="audit_cmd")
-    audit_tail_p = audit_sub.add_parser("tail", help="Print last N audit log entries")
-    audit_tail_p.add_argument("--n", type=int, default=20)
-    audit_sub.add_parser("push", help="Push audit log to private GitHub repo")
 
     args = parser.parse_args()
     stack_path = Path(args.stack)
@@ -448,28 +213,8 @@ if __name__ == "__main__":
         cmd_check(stack_path)
     elif args.cmd == "update":
         cmd_update(stack_path, Path(args.research), apply=args.apply)
-    elif args.cmd == "snapshot":
-        cmd_snapshot(stack_path, tag=args.tag)
-    elif args.cmd == "snapshots":
-        if args.snaps_cmd == "list":
-            cmd_snapshots_list(stack_path)
-        elif args.snaps_cmd == "prune":
-            cmd_snapshots_prune(stack_path)
-        else:
-            snaps_p.print_help()
-    elif args.cmd == "restore":
-        if not args.latest and not args.timestamp:
-            parser.error("restore requires --latest or a timestamp argument")
-        cmd_restore(stack_path, latest=args.latest, timestamp=args.timestamp)
     elif args.cmd == "generate":
         cmd_generate_manifest(stack_path)
-    elif args.cmd == "audit":
-        if args.audit_cmd == "tail":
-            cmd_audit_tail(n=args.n)
-        elif args.audit_cmd == "push":
-            cmd_audit_push(stack_path)
-        else:
-            audit_p.print_help()
     else:
         parser.print_help()
         sys.exit(1)

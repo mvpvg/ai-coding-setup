@@ -46,8 +46,6 @@ def test_template_dirs_exist():
         "hooks",
         "mcp_configs",
         "settings_json",
-        "tolaria_vault",
-        "scheduled",
     )
     for d in expected_dirs:
         assert (TEMPLATES_ROOT / d).is_dir(), f"templates/{d}/ missing"

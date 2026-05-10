@@ -14,7 +14,6 @@ from scripts.lib.platform_paths import (
     hook_executable_extension,
 )
 from scripts.lib.subprocess_safe import run as safe_run, SubprocessError
-from scripts.snapshot import create_snapshot
 
 
 def detect_conflicting_plugins(
@@ -105,7 +104,6 @@ def _apply_first_time_setup(
     write_toml(stack_path, cfg)
 
     snapshot_dir.mkdir(parents=True, exist_ok=True)
-    create_snapshot(snapshot_dir, reason="pre-bootstrap")
 
 
 def run_new_project(
