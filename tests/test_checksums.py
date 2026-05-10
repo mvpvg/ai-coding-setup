@@ -63,3 +63,9 @@ def test_checksum_error_message_includes_expected(tmp_path):
     bad_hash = "abcd" * 16
     with pytest.raises(ChecksumError, match=bad_hash):
         verify_file(f, bad_hash)
+
+
+def test_sha256_file_not_found_raises_checksum_error(tmp_path):
+    missing = tmp_path / "does_not_exist.bin"
+    with pytest.raises(ChecksumError, match="File not found"):
+        sha256_file(missing)
