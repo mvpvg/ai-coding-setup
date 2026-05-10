@@ -1,5 +1,4 @@
 import pytest
-from pathlib import Path
 from unittest.mock import MagicMock
 from scripts.bootstrap_project import (
     detect_conflicting_plugins,
