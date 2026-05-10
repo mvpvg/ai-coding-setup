@@ -184,7 +184,7 @@ def run_first_time(stack_path: Path) -> None:
 
     _apply_first_time_setup(stack_path, snapshot_dir, tolaria_vault)
     print(f"\n✓ Snapshot dir: {snapshot_dir}")
-    if tolaria_vault:
+    if tolaria_vault is not None:
         print(f"✓ Tolaria vault: {tolaria_vault}")
     print("\nSetup complete! Run with --resume <project-dir> to apply templates.")
 
