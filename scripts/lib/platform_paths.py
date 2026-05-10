@@ -24,8 +24,7 @@ def app_config_dir() -> Path:
 
 def cache_dir() -> Path:
     if platform.system() == "Windows":
-        local = os.environ.get("LOCALAPPDATA") or os.environ["APPDATA"]
-        return Path(local) / "dev-stack" / "cache"
+        return Path(os.environ["LOCALAPPDATA"]) / "dev-stack" / "cache"
     return Path.home() / ".cache" / "dev-stack"
 
 
