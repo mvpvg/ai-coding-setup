@@ -327,3 +327,29 @@ def test_run_new_project_no_templates_dir_does_not_crash(tmp_path):
 
     # Should not raise — gracefully skips missing templates
     run_new_project(project_dir, tmp_path / "stack.toml", _templates_root=templates_root)
+
+
+def test_run_new_project_no_base_md_skips_claude_md(tmp_path):
+    templates_root = tmp_path / "templates"
+    (templates_root / "claude_md").mkdir(parents=True)
+    (templates_root / "hooks").mkdir()
+
+    project_dir = tmp_path / "myproject"
+    project_dir.mkdir()
+
+    run_new_project(project_dir, tmp_path / "stack.toml", _templates_root=templates_root)
+
+    assert not (project_dir / "CLAUDE.md").exists()
+
+
+def test_run_new_project_no_hooks_dir_skips_hooks(tmp_path):
+    templates_root = tmp_path / "templates"
+    (templates_root / "claude_md").mkdir(parents=True)
+    (templates_root / "claude_md" / "base.md").write_text("# Base", encoding="utf-8")
+
+    project_dir = tmp_path / "myproject"
+    project_dir.mkdir()
+
+    run_new_project(project_dir, tmp_path / "stack.toml", _templates_root=templates_root)
+
+    assert not (project_dir / ".claude" / "hooks").exists()
