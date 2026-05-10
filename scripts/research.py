@@ -89,3 +89,71 @@ def parse_research_results(path: Path) -> dict[str, Any]:
         return json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
         raise ValueError(f"Invalid JSON in {path}: {e}") from e
+
+
+def write_validation_log(results: list[ValidationResult], output_path: Path) -> None:
+    """Write list of ValidationResult to JSON at output_path. Creates parent dirs."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = [
+        {
+            "passed": r.passed,
+            "tool": r.tool,
+            "check": r.check,
+            "details": r.details,
+            "evidence_url": r.evidence_url,
+        }
+        for r in results
+    ]
+    output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def run_research(
+    results_path: Path,
+    log_path: Path,
+    *,
+    _transport=None,
+) -> tuple[bool, list[ValidationResult]]:
+    """Parse research_results.json, validate every claim, write validation_log.json.
+    Returns (all_passed, results)."""
+    data = parse_research_results(results_path)
+    results = validate_research_results(data, _transport=_transport)
+    write_validation_log(results, log_path)
+    all_passed = all(r.passed for r in results)
+    return all_passed, results
+
+
+if __name__ == "__main__":
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(description="Research brief generation and validation")
+    sub = parser.add_subparsers(dest="cmd")
+
+    gen_p = sub.add_parser("generate", help="Generate research brief from stack.toml")
+    gen_p.add_argument("--stack", default="stack.toml", help="Path to stack.toml")
+    gen_p.add_argument("--output", default="research_brief.md", help="Output path for brief")
+
+    val_p = sub.add_parser("validate", help="Validate research_results.json")
+    val_p.add_argument("--input", default="research_results.json", help="Path to results JSON")
+    val_p.add_argument("--log", default="validation_log.json", help="Path for validation log")
+
+    args = parser.parse_args()
+
+    if args.cmd == "generate":
+        stack = read_toml(Path(args.stack))
+        brief = generate_research_brief(stack)
+        Path(args.output).write_text(brief, encoding="utf-8")
+        print(f"Research brief written to {args.output}")
+    elif args.cmd == "validate":
+        all_passed, results = run_research(Path(args.input), Path(args.log))
+        for r in results:
+            status = "✓" if r.passed else "✗"
+            print(f"  {status} [{r.tool}] {r.check}: {r.details}")
+        if all_passed:
+            print("\nAll validations passed.")
+        else:
+            failed = sum(1 for r in results if not r.passed)
+            print(f"\n{failed} validation(s) failed. See {args.log} for details.")
+            sys.exit(1)
+    else:
+        parser.print_help()
