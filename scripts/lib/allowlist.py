@@ -20,8 +20,12 @@ class DomainNotAllowedError(Exception):
 
 
 def check_url(url: str) -> None:
-    """Raise DomainNotAllowedError if url's hostname is not exactly in ALLOWED_DOMAINS."""
+    """Raise DomainNotAllowedError if url uses a non-https scheme or has a hostname not in ALLOWED_DOMAINS."""
     parsed = urlparse(url)
+    if parsed.scheme != "https":
+        raise DomainNotAllowedError(
+            f"Scheme '{parsed.scheme}' is not allowed — only https is permitted."
+        )
     host = parsed.hostname or ""
     if host not in ALLOWED_DOMAINS:
         raise DomainNotAllowedError(

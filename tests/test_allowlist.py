@@ -44,8 +44,9 @@ def test_rejected_unknown_domain():
 
 
 def test_rejected_http_scheme():
-    with pytest.raises(DomainNotAllowedError):
-        check_url("http://evil.com/package.tar.gz")
+    # Use an allowlisted domain to verify scheme is checked, not just hostname
+    with pytest.raises(DomainNotAllowedError, match="Scheme"):
+        check_url("http://github.com/repo")
 
 
 def test_rejected_subdomain_of_allowed():
