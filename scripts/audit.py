@@ -64,6 +64,8 @@ def tail(n: int = 20, log_path: Path | None = None) -> list[dict[str, Any]]:
     path = log_path or _log_path()
     if not path.exists():
         return []
+    if n == 0:
+        return []
     lines = path.read_text(encoding="utf-8").splitlines()
     recent = lines[-n:] if len(lines) > n else lines
     entries = []
