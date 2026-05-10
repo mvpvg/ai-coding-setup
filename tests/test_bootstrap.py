@@ -128,3 +128,90 @@ def test_create_snapshot_repo_creates_new(mocker):
     mocker.patch("scripts.bootstrap_project.safe_run", side_effect=[username_mock, exists_mock, create_mock])
     result = _create_snapshot_repo("dev-stack-snapshots")
     assert result == "myuser/dev-stack-snapshots"
+
+
+# --- _apply_first_time_setup ---
+
+def test_apply_first_time_updates_stack_toml(tmp_path, monkeypatch, mocker):
+    stack_path = tmp_path / "stack.toml"
+    write_toml(stack_path, {
+        "paths": {"snapshot_dir": "", "tolaria_vault": ""},
+        "github": {"private_snapshot_repo": "my-snapshots"},
+        "conflicting_plugins": {},
+    })
+
+    auth_mock = MagicMock(); auth_mock.returncode = 0
+    user_mock = MagicMock(); user_mock.returncode = 0; user_mock.stdout = b"testuser\n"
+    exists_mock = MagicMock(); exists_mock.returncode = 0
+    mocker.patch("scripts.bootstrap_project.safe_run", side_effect=[auth_mock, user_mock, exists_mock])
+
+    snapshot_dir = tmp_path / "snapshots"
+    monkeypatch.setattr("scripts.snapshot.claude_config_dir", lambda: tmp_path / ".claude_nx")
+    monkeypatch.setattr("scripts.snapshot.opencode_config_dir", lambda: tmp_path / ".opencode_nx")
+
+    _apply_first_time_setup(stack_path, snapshot_dir, tolaria_vault=None)
+
+    updated = read_toml(stack_path)
+    assert updated["paths"]["snapshot_dir"] == str(snapshot_dir)
+
+
+def test_apply_first_time_creates_snapshot(tmp_path, monkeypatch, mocker):
+    stack_path = tmp_path / "stack.toml"
+    write_toml(stack_path, {
+        "paths": {"snapshot_dir": "", "tolaria_vault": ""},
+        "github": {"private_snapshot_repo": "my-snapshots"},
+        "conflicting_plugins": {},
+    })
+
+    auth_mock = MagicMock(); auth_mock.returncode = 0
+    user_mock = MagicMock(); user_mock.returncode = 0; user_mock.stdout = b"testuser\n"
+    exists_mock = MagicMock(); exists_mock.returncode = 0
+    mocker.patch("scripts.bootstrap_project.safe_run", side_effect=[auth_mock, user_mock, exists_mock])
+
+    snapshot_dir = tmp_path / "snapshots"
+    monkeypatch.setattr("scripts.snapshot.claude_config_dir", lambda: tmp_path / ".claude_nx")
+    monkeypatch.setattr("scripts.snapshot.opencode_config_dir", lambda: tmp_path / ".opencode_nx")
+
+    _apply_first_time_setup(stack_path, snapshot_dir, tolaria_vault=None)
+
+    assert snapshot_dir.exists()
+    assert any(snapshot_dir.glob("*.zip"))
+
+
+def test_apply_first_time_records_tolaria_vault(tmp_path, monkeypatch, mocker):
+    stack_path = tmp_path / "stack.toml"
+    write_toml(stack_path, {
+        "paths": {"snapshot_dir": "", "tolaria_vault": ""},
+        "github": {"private_snapshot_repo": "my-snapshots"},
+        "conflicting_plugins": {},
+    })
+
+    auth_mock = MagicMock(); auth_mock.returncode = 0
+    user_mock = MagicMock(); user_mock.returncode = 0; user_mock.stdout = b"testuser\n"
+    exists_mock = MagicMock(); exists_mock.returncode = 0
+    mocker.patch("scripts.bootstrap_project.safe_run", side_effect=[auth_mock, user_mock, exists_mock])
+
+    snapshot_dir = tmp_path / "snapshots"
+    tolaria_vault = tmp_path / "vault"
+    monkeypatch.setattr("scripts.snapshot.claude_config_dir", lambda: tmp_path / ".claude_nx")
+    monkeypatch.setattr("scripts.snapshot.opencode_config_dir", lambda: tmp_path / ".opencode_nx")
+
+    _apply_first_time_setup(stack_path, snapshot_dir, tolaria_vault=tolaria_vault)
+
+    updated = read_toml(stack_path)
+    assert updated["paths"]["tolaria_vault"] == str(tolaria_vault)
+
+
+def test_apply_first_time_raises_on_unauthenticated_gh(tmp_path, monkeypatch, mocker):
+    stack_path = tmp_path / "stack.toml"
+    write_toml(stack_path, {
+        "paths": {"snapshot_dir": "", "tolaria_vault": ""},
+        "github": {"private_snapshot_repo": "my-snapshots"},
+        "conflicting_plugins": {},
+    })
+
+    auth_mock = MagicMock(); auth_mock.returncode = 1
+    mocker.patch("scripts.bootstrap_project.safe_run", return_value=auth_mock)
+
+    with pytest.raises(RuntimeError, match="gh auth login"):
+        _apply_first_time_setup(stack_path, tmp_path / "snapshots", tolaria_vault=None)
