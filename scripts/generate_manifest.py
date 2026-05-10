@@ -15,6 +15,7 @@ def _collect_tools(stack: dict[str, Any]) -> list[dict[str, Any]]:
                 "section": section,
                 "source": cfg.get("source", ""),
                 "pinned_version": cfg.get("pinned_version"),
+                "prereqs": list(cfg.get("prereqs", [])),
             })
     return tools
 

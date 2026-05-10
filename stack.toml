@@ -17,25 +17,25 @@ python_manager = "uv"
 default_caveman_level = "full"
 
 [base_tools]
-superpowers = { source = "marketplace", id = "superpowers@claude-plugins-official", min_version = "*" }
-frontend_design = { source = "marketplace", id = "frontend-design@claude-code-plugins", min_version = "*" }
-caveman = { source = "github", repo = "JuliusBrussee/caveman", min_version = "*" }
-mattpocock_grill = { source = "github", repo = "mattpocock/skills", path = "skills/engineering/grill-with-docs" }
-mattpocock_diagnose = { source = "github", repo = "mattpocock/skills", path = "skills/engineering/diagnose" }
-git_guardrails = { source = "github", repo = "mattpocock/skills", path = "skills/misc/git-guardrails-claude-code" }
+superpowers = { source = "marketplace", id = "superpowers@claude-plugins-official", min_version = "*", prereqs = ["claude-cli"] }
+frontend_design = { source = "marketplace", id = "frontend-design@claude-code-plugins", min_version = "*", prereqs = ["claude-cli"] }
+caveman = { source = "github", repo = "JuliusBrussee/caveman", min_version = "*", prereqs = ["git"] }
+mattpocock_grill = { source = "github", repo = "mattpocock/skills", path = "skills/engineering/grill-with-docs", prereqs = ["git"] }
+mattpocock_diagnose = { source = "github", repo = "mattpocock/skills", path = "skills/engineering/diagnose", prereqs = ["git"] }
+git_guardrails = { source = "github", repo = "mattpocock/skills", path = "skills/misc/git-guardrails-claude-code", prereqs = ["git"] }
 
 [mcp_servers]
-cocoindex_code = { source = "pypi", package = "cocoindex-code", extras = "full" }
-context7 = { source = "npm", package = "@upstash/context7-mcp" }
-github = { source = "official", id = "github" }
-postgres = { source = "official", id = "postgres" }
-filesystem = { source = "official", id = "filesystem" }
+cocoindex_code = { source = "pypi", package = "cocoindex-code", extras = "full", prereqs = ["python", "uv"] }
+context7 = { source = "npm", package = "@upstash/context7-mcp", prereqs = ["node", "npm"] }
+github = { source = "official", id = "github", prereqs = ["docker", "gh-token"] }
+postgres = { source = "official", id = "postgres", prereqs = ["postgres", "postgres-conn-string"] }
+filesystem = { source = "official", id = "filesystem", prereqs = ["node"] }
 
 [per_project]
-playwright = { trigger = "has_e2e_tests", source = "npm", package = "@playwright/mcp" }
-gitnexus = { trigger = "manual", source = "npm", package = "gitnexus" }
-graphify = { trigger = "manual", source = "pypi", package = "graphifyy" }
-obscura = { trigger = "manual", source = "github_release", repo = "h4ckf0r0day/obscura" }
+playwright = { trigger = "has_e2e_tests", source = "npm", package = "@playwright/mcp", prereqs = ["node", "npm"] }
+gitnexus = { trigger = "manual", source = "npm", package = "gitnexus", prereqs = ["node", "npm"] }
+graphify = { trigger = "manual", source = "pypi", package = "graphifyy", prereqs = ["python", "uv"] }
+obscura = { trigger = "manual", source = "github_release", repo = "h4ckf0r0day/obscura", prereqs = ["git"] }
 
 [conflicting_plugins]
 everything_claude_code = { id = "everything-claude-code", reason = "Conflicts with Superpowers" }

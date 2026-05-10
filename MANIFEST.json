@@ -1,96 +1,148 @@
 {
   "schema_version": "1",
-  "generated_at": "2026-05-10T13:53:22.369942+00:00",
+  "generated_at": "2026-05-10T15:36:52.526698+00:00",
   "tools": [
     {
       "id": "superpowers",
       "section": "base_tools",
       "source": "marketplace",
-      "pinned_version": null
+      "pinned_version": null,
+      "prereqs": [
+        "claude-cli"
+      ]
     },
     {
       "id": "frontend_design",
       "section": "base_tools",
       "source": "marketplace",
-      "pinned_version": null
+      "pinned_version": null,
+      "prereqs": [
+        "claude-cli"
+      ]
     },
     {
       "id": "caveman",
       "section": "base_tools",
       "source": "github",
-      "pinned_version": null
+      "pinned_version": null,
+      "prereqs": [
+        "git"
+      ]
     },
     {
       "id": "mattpocock_grill",
       "section": "base_tools",
       "source": "github",
-      "pinned_version": null
+      "pinned_version": null,
+      "prereqs": [
+        "git"
+      ]
     },
     {
       "id": "mattpocock_diagnose",
       "section": "base_tools",
       "source": "github",
-      "pinned_version": null
+      "pinned_version": null,
+      "prereqs": [
+        "git"
+      ]
     },
     {
       "id": "git_guardrails",
       "section": "base_tools",
       "source": "github",
-      "pinned_version": null
+      "pinned_version": null,
+      "prereqs": [
+        "git"
+      ]
     },
     {
       "id": "cocoindex_code",
       "section": "mcp_servers",
       "source": "pypi",
-      "pinned_version": null
+      "pinned_version": null,
+      "prereqs": [
+        "python",
+        "uv"
+      ]
     },
     {
       "id": "context7",
       "section": "mcp_servers",
       "source": "npm",
-      "pinned_version": null
+      "pinned_version": null,
+      "prereqs": [
+        "node",
+        "npm"
+      ]
     },
     {
       "id": "github",
       "section": "mcp_servers",
       "source": "official",
-      "pinned_version": null
+      "pinned_version": null,
+      "prereqs": [
+        "docker",
+        "gh-token"
+      ]
     },
     {
       "id": "postgres",
       "section": "mcp_servers",
       "source": "official",
-      "pinned_version": null
+      "pinned_version": null,
+      "prereqs": [
+        "postgres",
+        "postgres-conn-string"
+      ]
     },
     {
       "id": "filesystem",
       "section": "mcp_servers",
       "source": "official",
-      "pinned_version": null
+      "pinned_version": null,
+      "prereqs": [
+        "node"
+      ]
     },
     {
       "id": "playwright",
       "section": "per_project",
       "source": "npm",
-      "pinned_version": null
+      "pinned_version": null,
+      "prereqs": [
+        "node",
+        "npm"
+      ]
     },
     {
       "id": "gitnexus",
       "section": "per_project",
       "source": "npm",
-      "pinned_version": null
+      "pinned_version": null,
+      "prereqs": [
+        "node",
+        "npm"
+      ]
     },
     {
       "id": "graphify",
       "section": "per_project",
       "source": "pypi",
-      "pinned_version": null
+      "pinned_version": null,
+      "prereqs": [
+        "python",
+        "uv"
+      ]
     },
     {
       "id": "obscura",
       "section": "per_project",
       "source": "github_release",
-      "pinned_version": null
+      "pinned_version": null,
+      "prereqs": [
+        "git"
+      ]
     }
   ]
 }
