@@ -1,8 +1,6 @@
 """Tests for setup_helpers.py — installer helper functions."""
 import json
 import os
-import subprocess
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -19,7 +17,6 @@ from scripts.setup_helpers import (
 
 def test_check_prereqs_python_311_present():
     result = check_prereqs(["python"])
-    # Test runs on 3.11+, so python should be true
     assert result["python"] is True
 
 
@@ -65,7 +62,6 @@ def test_check_prereqs_gh_token_falls_back_to_gh_auth(monkeypatch, mocker):
 def test_verify_sha256_match(tmp_path):
     p = tmp_path / "f.bin"
     p.write_bytes(b"hello")
-    # sha256("hello") = 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
     assert verify_sha256(p, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824") is True
 
 
@@ -106,33 +102,6 @@ def test_write_mcp_config_merges_existing(tmp_path):
     assert "github" in mcp["mcpServers"]
 
 
-def test_apply_template_claude_md_base(tmp_path, mocker):
-    # Setup fake templates dir alongside setup_helpers.py
-    fake_templates = tmp_path / "templates"
-    (fake_templates / "claude_md").mkdir(parents=True)
-    (fake_templates / "claude_md" / "base.md").write_text("# Base", encoding="utf-8")
-
-    mocker.patch("scripts.setup_helpers._templates_root", return_value=fake_templates)
-
-    project_dir = tmp_path / "proj"
-    project_dir.mkdir()
-    apply_template("claude_md", project_dir, "base")
-    assert (project_dir / "CLAUDE.md").read_text() == "# Base"
-
-
-def test_apply_template_claude_md_falls_back_to_base(tmp_path, mocker):
-    fake_templates = tmp_path / "templates"
-    (fake_templates / "claude_md").mkdir(parents=True)
-    (fake_templates / "claude_md" / "base.md").write_text("# Base fallback", encoding="utf-8")
-
-    mocker.patch("scripts.setup_helpers._templates_root", return_value=fake_templates)
-
-    project_dir = tmp_path / "proj"
-    project_dir.mkdir()
-    apply_template("claude_md", project_dir, "nonexistent_type")
-    assert (project_dir / "CLAUDE.md").read_text() == "# Base fallback"
-
-
 def test_apply_template_hooks_copies_and_chmods(tmp_path, mocker):
     fake_templates = tmp_path / "templates"
     hooks_src = fake_templates / "hooks"
@@ -144,16 +113,31 @@ def test_apply_template_hooks_copies_and_chmods(tmp_path, mocker):
 
     project_dir = tmp_path / "proj"
     project_dir.mkdir()
-    apply_template("hooks", project_dir, "base")
+    apply_template("hooks", project_dir)
 
     pre = project_dir / ".claude" / "hooks" / "pre-tool.sh"
     post = project_dir / ".claude" / "hooks" / "post-tool.sh"
     assert pre.exists()
     assert post.exists()
-    # Mode bit set on .sh files
-    assert pre.stat().st_mode & 0o100  # owner-execute
+    assert pre.stat().st_mode & 0o100
+
+
+def test_apply_template_global_claude_md(tmp_path, mocker):
+    fake_templates = tmp_path / "templates"
+    (fake_templates / "claude_md").mkdir(parents=True)
+    (fake_templates / "claude_md" / "global.md").write_text("# Global Rules", encoding="utf-8")
+
+    mocker.patch("scripts.setup_helpers._templates_root", return_value=fake_templates)
+
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+    apply_template("global_claude_md", home_dir)
+
+    dest = home_dir / ".claude" / "CLAUDE.md"
+    assert dest.exists()
+    assert dest.read_text() == "# Global Rules"
 
 
 def test_apply_template_invalid_name_raises(tmp_path):
     with pytest.raises(ValueError, match="Unknown template"):
-        apply_template("not_a_template", tmp_path, "base")
+        apply_template("not_a_template", tmp_path)

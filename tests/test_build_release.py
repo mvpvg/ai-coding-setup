@@ -29,7 +29,7 @@ def test_install_command_npm_pinned():
 def test_install_command_npm_unpinned():
     cmd = _install_command("npm", {"package": "@scope/pkg"})
     assert "pnpm add -g @scope/pkg" in cmd
-    assert "@@" not in cmd  # no double @
+    assert "@@" not in cmd
 
 
 def test_install_command_pypi_pinned():
@@ -80,7 +80,6 @@ def test_render_readme_lists_unique_prereqs():
         }
     }
     md = render_readme(stack)
-    # Each prereq listed once (alphabetical)
     assert md.count("- **git**") == 1
     assert md.count("- **python**") == 1
     assert md.count("- **uv**") == 1
@@ -90,19 +89,25 @@ def test_render_readme_groups_sections():
     stack = {
         "base_tools": {"a": {"source": "pypi", "package": "a"}},
         "mcp_servers": {"b": {"source": "official", "id": "b"}},
-        "per_project": {"c": {"source": "npm", "package": "c", "trigger": "manual"}},
     }
     md = render_readme(stack)
     assert "## Base Tools" in md
     assert "## MCP Servers" in md
-    assert "## Per-Project Tools" in md
+    assert "## Obscura" in md
+
+
+def test_render_readme_includes_obscura_manual():
+    stack = {}
+    md = render_readme(stack)
+    assert "Obscura" in md
+    assert "github.com/h4ckf0r0day/obscura" in md
+    assert "tolaria_vault" in md
 
 
 def test_build_release_creates_zip(tmp_path):
     repo = tmp_path / "repo"
     repo.mkdir()
 
-    # Minimal repo layout
     write_toml(repo / "stack.toml", {
         "meta": {"schema_version": "1"},
         "base_tools": {"ruff": {"source": "pypi", "package": "ruff", "prereqs": ["python"]}},
@@ -119,7 +124,10 @@ def test_build_release_creates_zip(tmp_path):
     (repo / "release_assets" / ".gitignore").write_text("node_modules/\n", encoding="utf-8")
 
     (repo / "templates" / "claude_md").mkdir(parents=True)
-    (repo / "templates" / "claude_md" / "base.md").write_text("# base", encoding="utf-8")
+    (repo / "templates" / "claude_md" / "global.md").write_text("# global", encoding="utf-8")
+
+    (repo / "tolaria_vault").mkdir()
+    (repo / "tolaria_vault" / "README.md").write_text("# vault", encoding="utf-8")
 
     output = tmp_path / "dist"
     output.mkdir()
@@ -128,18 +136,18 @@ def test_build_release_creates_zip(tmp_path):
     assert zip_path.exists()
     assert zip_path.name == "ai-coding-stack-v0.1.0.zip"
 
-    # Contents check
     with zipfile.ZipFile(zip_path) as zf:
         names = set(zf.namelist())
     assert "stack.toml" in names
     assert "setup_helpers.py" in names
     assert "prompts/setup-stack.md" in names
-    assert ".claude/commands/setup-stack.md" in names  # Claude Code slash command
+    assert ".claude/commands/setup-stack.md" in names
     assert "CLAUDE.md" in names
     assert "AGENTS.md" in names
     assert "README.md" in names
-    assert "templates/claude_md/base.md" in names
+    assert "templates/claude_md/global.md" in names
     assert ".gitignore" in names
+    assert "tolaria_vault/README.md" in names
 
 
 def test_build_release_writes_sha256(tmp_path):
@@ -162,7 +170,6 @@ def test_build_release_writes_sha256(tmp_path):
     sha_path = zip_path.parent / (zip_path.name + ".sha256")
     assert sha_path.exists()
 
-    # Verify sha256 file content matches actual zip hash
     h = hashlib.sha256()
     with open(zip_path, "rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
@@ -193,4 +200,4 @@ def test_build_release_readme_generated_from_stack(tmp_path):
     with zipfile.ZipFile(zip_path) as zf:
         readme = zf.read("README.md").decode("utf-8")
     assert "ruff" in readme
-    assert "python" in readme  # prereq listed
+    assert "python" in readme

@@ -48,5 +48,5 @@ test-results/
 *.log
 logs/
 
-# Snapshots (local only)
+# Snapshots (local only — pushed to private repo separately)
 snapshots/

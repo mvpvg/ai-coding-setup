@@ -1,22 +1,19 @@
-Run an AI-guided installation of the curated AI coding stack into the current project.
+Run an AI-guided installation of the curated AI coding stack into the current machine.
 
 ## Flow
 
 1. **Greet:** Confirm the user wants to begin. Mention setup takes ~10 minutes.
 
-2. **Pick project type:** Ask the user to choose: `react_frontend`, `fastapi_backend`, `fullstack`, or `general` (defaults to `base`). Save the answer for step 8.
-
-3. **Run prereq audit.** Read `stack.toml`, collect every unique prereq key across all `prereqs` arrays, then run:
+2. **Run prereq audit.** Read `stack.toml`, collect every unique prereq key across all `prereqs` arrays, then run:
    ```bash
    python setup_helpers.py check-prereqs <key1> <key2> ...
    ```
    Render the result as a clean table.
 
-4. **Resolve prereq gaps.** For each missing prereq, briefly explain what it is and offer install commands per OS (macOS / Linux / Windows). Wait for the user to install before continuing. Re-run the audit to confirm.
+3. **Resolve prereq gaps.** For each missing prereq, briefly explain what it is and offer install commands per OS (macOS / Linux / Windows). Wait for the user to install before continuing. Re-run audit to confirm.
 
-5. **Per-tool loop.** For each tool in `stack.toml` (sections in order: `base_tools`, `global_tools`, `mcp_servers`, `per_project`):
-   - Skip `per_project` tools whose `trigger` doesn't match this project (ask the user when ambiguous).
-   - Skip tools marked `optional = true` by default — list them at the end and ask if the user wants any of them.
+4. **Per-tool loop.** For each tool in `stack.toml` (sections in order: `base_tools`, `global_tools`, `mcp_servers`):
+   - Skip tools marked `optional = true` by default — list them at the end and ask if the user wants any.
    - Re-check the tool's `prereqs`. If any are missing, skip the tool with a clear reason.
    - Explain what the tool does and ask for confirmation.
    - On confirm, run the install command per source type:
@@ -27,7 +24,6 @@ Run an AI-guided installation of the curated AI coding stack into the current pr
      | `npm` | `pnpm add -g <package>` |
      | `uv_tool` | `uv tool install "<package>[extras]"` (with extras if specified) or `uv tool install <package>` |
      | `github` | `git clone https://github.com/<repo>` then follow skill install steps |
-     | `github_release` | `python setup_helpers.py download-verified <url> <dest> <sha256>` |
      | `desktop` | Show the `note` field as manual instruction; after user confirms install, write MCP config |
 
    - **Tolaria MCP config:** After user confirms Tolaria is installed, ask for the vault path, then write:
@@ -36,35 +32,27 @@ Run an AI-guided installation of the curated AI coding stack into the current pr
      ```
      Common install paths: macOS `~/Library/Application Support/tolaria`, Linux `~/.local/share/tolaria`.
 
+     **Vault tip:** This zip includes a pre-populated `tolaria_vault/` folder covering tool decisions, usage patterns, and setup postmortems. Offer to use it as the starting vault: point Tolaria at the extracted `tolaria_vault/` directory.
+
    - For credential-needing tools (`gh-token`, `postgres-conn-string`):
      - Ask the user for the value
      - Write to `.env` (creating `.gitignore` entry if missing)
 
-6. **Apply project-type templates:**
-   ```bash
-   python setup_helpers.py apply-template claude_md --project-type <chosen_type>
-   python setup_helpers.py apply-template agents_md --project-type <chosen_type>
-   ```
-
-7. **Write global CLAUDE.md:**
+5. **Write global CLAUDE.md:**
    ```bash
    python setup_helpers.py apply-template global_claude_md --project-dir ~
    ```
-   This writes `~/.claude/CLAUDE.md` with the full agent rules (caveman-micro compression, Superpowers workflow, security invariants).
+   This writes `~/.claude/CLAUDE.md` with the full agent rules.
    If `~/.claude/CLAUDE.md` already exists, ask the user before overwriting.
 
-8. **Optional hooks:** Ask: "Install git-guardrails hooks? Blocks dangerous git commands (force push, reset --hard) with confirmation." If yes:
+6. **Optional hooks:** Ask: "Install git-guardrails hooks? Blocks dangerous git commands (force push, reset --hard) with confirmation." If yes:
    ```bash
    python setup_helpers.py apply-template hooks
    ```
 
-9. **Cleanup and archive:**
-   - Create `_archive/bootstrap_<timestamp>/` in the project root.
-   - Move into it: `templates/`, any `*.research_brief.md`, `research_results.json`, `validation_log.json`.
-   - Keep: `setup_helpers.py`, `stack.toml`, `prompts/setup-stack.md`, `README.md`, `SUMMARY.md` (re-runnable).
-   - Write `SUMMARY.md` with: tools installed, tools skipped (with reasons), prereqs resolved, where credentials were stored, archive location.
+7. **Obscura (manual install):** Inform the user that Obscura requires a manual download from GitHub releases — refer them to `README.md` in this zip for exact steps.
 
-10. **Done.** Suggest next steps: open project files, commit `.gitignore`, run a test.
+8. **Done.** Suggest next steps: open a project in Claude Code, commit `.gitignore`, run a test.
 
 ## Safety
 
@@ -76,4 +64,4 @@ Run an AI-guided installation of the curated AI coding stack into the current pr
 
 ## Re-runs
 
-This prompt is safe to re-run. It checks the current project state and only installs what's missing or out of date. Run `/setup-stack` again any time to re-sync with `stack.toml`.
+This prompt is safe to re-run. It checks the current state and only installs what's missing. Run `/setup-stack` again any time to re-sync.

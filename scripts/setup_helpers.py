@@ -139,24 +139,14 @@ def write_mcp_config(name: str, config: dict[str, Any], project_dir: Path) -> No
     mcp_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
-def apply_template(template_name: str, project_dir: Path, project_type: str) -> None:
+def apply_template(template_name: str, project_dir: Path, project_type: str = "base") -> None:
     """Apply a template to the project directory.
 
-    template_name: 'claude_md', 'agents_md', or 'hooks'
-    project_type: variant for claude_md/agents_md (e.g., 'base', 'react_frontend')
+    template_name: 'hooks' or 'global_claude_md'
     """
     templates_root = _templates_root()
 
-    if template_name == "claude_md":
-        src = templates_root / "claude_md" / f"{project_type}.md"
-        if not src.exists():
-            src = templates_root / "claude_md" / "base.md"
-        shutil.copy2(src, project_dir / "CLAUDE.md")
-    elif template_name == "agents_md":
-        src = templates_root / "agents_md" / "base.md"
-        if src.exists():
-            shutil.copy2(src, project_dir / "AGENTS.md")
-    elif template_name == "hooks":
+    if template_name == "hooks":
         src_dir = templates_root / "hooks"
         dest_dir = project_dir / ".claude" / "hooks"
         dest_dir.mkdir(parents=True, exist_ok=True)
@@ -198,7 +188,7 @@ def main() -> None:
     wm.add_argument("--project-dir", default=".")
 
     at = sub.add_parser("apply-template")
-    at.add_argument("template_name", choices=["claude_md", "agents_md", "hooks", "global_claude_md"])
+    at.add_argument("template_name", choices=["hooks", "global_claude_md"])
     at.add_argument("--project-type", default="base")
     at.add_argument("--project-dir", default=".")
 

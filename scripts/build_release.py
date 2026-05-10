@@ -52,7 +52,7 @@ def render_readme(stack: dict[str, Any]) -> str:
         "",
         "## Quick Start",
         "",
-        "**Recommended:** open this folder in Claude Code or OpenCode and run `/setup-stack`. "
+        "**Recommended:** open this folder in Claude Code and run `/setup-stack`. "
         "The agent walks you through prereq detection and tool installation.",
         "",
         "**Manual install:** follow the steps below.",
@@ -62,7 +62,7 @@ def render_readme(stack: dict[str, Any]) -> str:
     ]
 
     all_prereqs: set[str] = set()
-    for section in ("base_tools", "global_tools", "mcp_servers", "per_project"):
+    for section in ("base_tools", "global_tools", "mcp_servers"):
         for cfg in stack.get(section, {}).values():
             all_prereqs.update(cfg.get("prereqs", []))
 
@@ -80,7 +80,6 @@ def render_readme(stack: dict[str, Any]) -> str:
         "base_tools": "Base Tools",
         "global_tools": "Global CLI Tools",
         "mcp_servers": "MCP Servers",
-        "per_project": "Per-Project Tools",
     }
 
     for section_key, section_title in section_titles.items():
@@ -104,8 +103,8 @@ def render_readme(stack: dict[str, Any]) -> str:
                 lines.append(f"- Version: `{cfg['pinned_version']}`")
             if cfg.get("prereqs"):
                 lines.append(f"- Prereqs: {', '.join(cfg['prereqs'])}")
-            if "trigger" in cfg:
-                lines.append(f"- Trigger: `{cfg['trigger']}`")
+            if cfg.get("optional"):
+                lines.append("- Optional: yes (skipped by default, ask during setup)")
 
             cmd = _install_command(source, cfg)
             if cmd:
@@ -116,6 +115,39 @@ def render_readme(stack: dict[str, Any]) -> str:
                 lines.append(cmd)
                 lines.append("```")
             lines.append("")
+
+    # Obscura manual install section
+    lines += [
+        "## Obscura (Manual Install)",
+        "",
+        "Obscura is a headless browser / scraping CLI. No auto-install — download manually:",
+        "",
+        "1. Go to https://github.com/h4ckf0r0day/obscura/releases",
+        "2. Download the binary for your OS",
+        "3. Verify the SHA256 checksum against the release notes",
+        "4. Move to PATH:",
+        "",
+        "```bash",
+        "mv obscura /usr/local/bin/obscura",
+        "chmod +x /usr/local/bin/obscura",
+        "obscura --version",
+        "```",
+        "",
+        "Use Obscura when you need to fetch/scrape a web page (read-only).",
+        "Use Playwright when you need to interact with a browser (click, fill forms).",
+        "",
+        "## Tolaria Vault",
+        "",
+        "This zip includes `tolaria_vault/` — a pre-populated knowledge base covering:",
+        "- Tool decisions and rationale",
+        "- Usage patterns and workflows",
+        "- Bug postmortems from setup",
+        "- New machine onboarding checklist",
+        "",
+        "Point the Tolaria desktop app at the extracted `tolaria_vault/` directory.",
+        "See `tolaria_vault/README.md` for connection instructions.",
+        "",
+    ]
 
     return "\n".join(lines) + "\n"
 
@@ -154,10 +186,15 @@ def build_release(version: str, output_dir: Path, repo_root: Path) -> Path:
         commands_dst.mkdir(parents=True)
         shutil.copy2(setup_stack_src, commands_dst / "setup-stack.md")
 
-        # Templates (the post-install ones)
+        # Templates — only global.md and hooks
         templates_src = repo_root / "templates"
         if templates_src.exists():
             shutil.copytree(templates_src, staging / "templates")
+
+        # Tolaria vault
+        tolaria_vault_src = repo_root / "tolaria_vault"
+        if tolaria_vault_src.exists():
+            shutil.copytree(tolaria_vault_src, staging / "tolaria_vault")
 
         # Installer-mode CLAUDE.md / AGENTS.md
         shutil.copy2(repo_root / "release_assets" / "CLAUDE.md", staging / "CLAUDE.md")

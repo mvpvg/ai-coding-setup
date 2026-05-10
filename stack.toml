@@ -26,9 +26,6 @@ graphify = { source = "uv_tool", package = "graphifyy", prereqs = ["python", "uv
 context7 = { source = "npm", package = "@upstash/context7-mcp", prereqs = ["node", "pnpm"] }
 tolaria = { source = "desktop", note = "Manual install from https://github.com/refactoringhq/tolaria/releases — after install, configure MCP path below", prereqs = [] }
 
-[per_project]
-obscura = { source = "github_release", repo = "h4ckf0r0day/obscura", prereqs = ["git"] }
-
 [conflicting_plugins]
 everything_claude_code = { id = "everything-claude-code", reason = "Conflicts with Superpowers" }
 ui_ux_pro_max = { id = "ui-ux-pro-max-skill", reason = "Overlaps with frontend-design" }
