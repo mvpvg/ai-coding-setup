@@ -155,3 +155,58 @@ def cmd_check(stack_path: Path, *, console: Console | None = None) -> None:
         _console.print(f"Last snapshot: {zips[-1].name}")
     else:
         _console.print("Last snapshot: none")
+
+
+def cmd_snapshot(
+    stack_path: Path,
+    tag: str = "",
+    *,
+    console: Console | None = None,
+) -> None:
+    _console = console or Console()
+    cfg = read_toml(stack_path)
+    snapshot_dir_str = cfg.get("paths", {}).get("snapshot_dir", "")
+    if not snapshot_dir_str:
+        raise RuntimeError("snapshot_dir not configured in stack.toml — run bootstrap first")
+    snapshot_dir = Path(snapshot_dir_str)
+    tolaria_vault_str = cfg.get("paths", {}).get("tolaria_vault", "")
+    tolaria_vault = Path(tolaria_vault_str) if tolaria_vault_str else None
+    zip_path = create_snapshot(snapshot_dir, reason="manual", tag=tag, tolaria_vault=tolaria_vault)
+    _console.print(f"Snapshot created: {zip_path.name}")
+
+
+def cmd_snapshots_list(stack_path: Path, *, console: Console | None = None) -> None:
+    _console = console or Console()
+    cfg = read_toml(stack_path)
+    snapshot_dir_str = cfg.get("paths", {}).get("snapshot_dir", "")
+    if not snapshot_dir_str:
+        _console.print("snapshot_dir not configured")
+        return
+    snapshot_dir = Path(snapshot_dir_str)
+    if not snapshot_dir.exists():
+        _console.print("Snapshot directory does not exist")
+        return
+    zips = sorted(snapshot_dir.glob("*.zip"), key=lambda p: p.name)
+    if not zips:
+        _console.print("No snapshots found")
+        return
+    table = Table("Name", "Size", title="Snapshots", box=box.SIMPLE)
+    for z in zips:
+        size_kb = z.stat().st_size // 1024
+        table.add_row(z.name, f"{size_kb} KB")
+    _console.print(table)
+
+
+def cmd_snapshots_prune(stack_path: Path, *, console: Console | None = None) -> None:
+    _console = console or Console()
+    cfg = read_toml(stack_path)
+    snapshot_dir_str = cfg.get("paths", {}).get("snapshot_dir", "")
+    if not snapshot_dir_str:
+        raise RuntimeError("snapshot_dir not configured in stack.toml")
+    snapshot_dir = Path(snapshot_dir_str)
+    deleted = prune_snapshots(snapshot_dir)
+    if deleted:
+        for p in deleted:
+            _console.print(f"Pruned: {p.name}")
+    else:
+        _console.print("Nothing to prune")

@@ -2,7 +2,10 @@ import io
 import pytest
 from rich.console import Console
 from scripts.lib.config import write_toml
-from scripts.update_stack import ToolDiff, classify_tier, compute_diff, display_diff, cmd_check
+from scripts.update_stack import (
+    ToolDiff, classify_tier, compute_diff, display_diff, cmd_check,
+    cmd_snapshot, cmd_snapshots_list, cmd_snapshots_prune,
+)
 
 
 # --- classify_tier ---
@@ -283,3 +286,102 @@ def test_cmd_check_no_snapshot_dir_configured(tmp_path):
     console, buf = _make_console()
     cmd_check(stack_path, console=console)
     assert "not configured" in buf.getvalue()
+
+
+# --- cmd_snapshot ---
+
+def _write_minimal_stack(path, snapshot_dir="", tolaria_vault=""):
+    write_toml(path, {
+        "meta": {"schema_version": "1", "created": "", "last_validated": ""},
+        "paths": {"snapshot_dir": snapshot_dir, "tolaria_vault": tolaria_vault},
+        "github": {"private_snapshot_repo": "snapshots"},
+        "base_tools": {}, "mcp_servers": {}, "per_project": {},
+    })
+
+
+def test_cmd_snapshot_calls_create_snapshot(tmp_path, mocker):
+    snap_dir = tmp_path / "snaps"
+    stack_path = tmp_path / "stack.toml"
+    _write_minimal_stack(stack_path, snapshot_dir=str(snap_dir))
+    mock = mocker.patch("scripts.update_stack.create_snapshot",
+                        return_value=snap_dir / "2026-05-10_manual.zip")
+    console, buf = _make_console()
+    cmd_snapshot(stack_path, console=console)
+    mock.assert_called_once_with(snap_dir, reason="manual", tag="", tolaria_vault=None)
+
+
+def test_cmd_snapshot_with_tag(tmp_path, mocker):
+    snap_dir = tmp_path / "snaps"
+    stack_path = tmp_path / "stack.toml"
+    _write_minimal_stack(stack_path, snapshot_dir=str(snap_dir))
+    mock = mocker.patch("scripts.update_stack.create_snapshot",
+                        return_value=snap_dir / "2026-05-10_manual_mytag.zip")
+    cmd_snapshot(stack_path, tag="mytag")
+    mock.assert_called_once_with(snap_dir, reason="manual", tag="mytag", tolaria_vault=None)
+
+
+def test_cmd_snapshot_no_snapshot_dir_raises(tmp_path):
+    stack_path = tmp_path / "stack.toml"
+    _write_minimal_stack(stack_path, snapshot_dir="")
+    with pytest.raises(RuntimeError, match="snapshot_dir not configured"):
+        cmd_snapshot(stack_path)
+
+
+# --- cmd_snapshots_list ---
+
+def test_cmd_snapshots_list_shows_zips(tmp_path):
+    snap_dir = tmp_path / "snaps"
+    snap_dir.mkdir()
+    (snap_dir / "2026-05-10_12-00-00_manual.zip").write_bytes(b"x" * 2048)
+    (snap_dir / "2026-05-10_13-00-00_manual.zip").write_bytes(b"x" * 1024)
+    stack_path = tmp_path / "stack.toml"
+    _write_minimal_stack(stack_path, snapshot_dir=str(snap_dir))
+    console, buf = _make_console()
+    cmd_snapshots_list(stack_path, console=console)
+    out = buf.getvalue()
+    assert "2026-05-10_12-00-00_manual.zip" in out
+    assert "2026-05-10_13-00-00_manual.zip" in out
+
+
+def test_cmd_snapshots_list_empty_dir(tmp_path):
+    snap_dir = tmp_path / "snaps"
+    snap_dir.mkdir()
+    stack_path = tmp_path / "stack.toml"
+    _write_minimal_stack(stack_path, snapshot_dir=str(snap_dir))
+    console, buf = _make_console()
+    cmd_snapshots_list(stack_path, console=console)
+    assert "No snapshots" in buf.getvalue()
+
+
+def test_cmd_snapshots_list_no_dir_configured(tmp_path):
+    stack_path = tmp_path / "stack.toml"
+    _write_minimal_stack(stack_path, snapshot_dir="")
+    console, buf = _make_console()
+    cmd_snapshots_list(stack_path, console=console)
+    assert "not configured" in buf.getvalue()
+
+
+# --- cmd_snapshots_prune ---
+
+def test_cmd_snapshots_prune_calls_prune(tmp_path, mocker):
+    snap_dir = tmp_path / "snaps"
+    snap_dir.mkdir()
+    stack_path = tmp_path / "stack.toml"
+    _write_minimal_stack(stack_path, snapshot_dir=str(snap_dir))
+    deleted = [snap_dir / "old.zip"]
+    mock = mocker.patch("scripts.update_stack.prune_snapshots", return_value=deleted)
+    console, buf = _make_console()
+    cmd_snapshots_prune(stack_path, console=console)
+    mock.assert_called_once_with(snap_dir)
+    assert "old.zip" in buf.getvalue()
+
+
+def test_cmd_snapshots_prune_nothing_to_prune(tmp_path, mocker):
+    snap_dir = tmp_path / "snaps"
+    snap_dir.mkdir()
+    stack_path = tmp_path / "stack.toml"
+    _write_minimal_stack(stack_path, snapshot_dir=str(snap_dir))
+    mocker.patch("scripts.update_stack.prune_snapshots", return_value=[])
+    console, buf = _make_console()
+    cmd_snapshots_prune(stack_path, console=console)
+    assert "Nothing to prune" in buf.getvalue()
