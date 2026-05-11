@@ -3,12 +3,44 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import shutil
 import zipfile
 from pathlib import Path
 from typing import Any
 
 from scripts.lib.config import read_toml
+
+
+_PROJECT_MCP_JSON: dict[str, Any] = {
+    "mcpServers": {
+        "context7": {
+            "type": "stdio",
+            "command": "pnpm",
+            "args": ["exec", "@upstash/context7-mcp"],
+        },
+        "playwright": {
+            "type": "stdio",
+            "command": "pnpm",
+            "args": ["exec", "@playwright/mcp@latest"],
+        },
+    }
+}
+
+_PROJECT_OPENCODE_JSON: dict[str, Any] = {
+    "mcp": {
+        "context7": {
+            "type": "stdio",
+            "command": "pnpm",
+            "args": ["exec", "@upstash/context7-mcp"],
+        },
+        "playwright": {
+            "type": "stdio",
+            "command": "pnpm",
+            "args": ["exec", "@playwright/mcp@latest"],
+        },
+    }
+}
 
 
 def _install_command(source: str, cfg: dict[str, Any]) -> str:
@@ -52,10 +84,24 @@ def render_readme(stack: dict[str, Any]) -> str:
         "",
         "## Quick Start",
         "",
-        "**Recommended:** open this folder in Claude Code and run `/setup-stack`. "
-        "The agent walks you through prereq detection and tool installation.",
+        "**Recommended:** open this folder in Claude Code or OpenCode and run `/setup-stack`.",
+        "The agent checks prereqs, installs tools, and tells you exactly what to copy where.",
         "",
         "**Manual install:** follow the steps below.",
+        "",
+        "## After Setup",
+        "",
+        "Copy files from `project-files/` to any project you work in:",
+        "",
+        "| File | For |",
+        "|------|-----|",
+        "| `project-files/.mcp.json` | Claude Code projects |",
+        "| `project-files/opencode.json` | OpenCode projects |",
+        "| `project-files/CLAUDE.md` | Claude Code projects |",
+        "| `project-files/AGENTS.md` | OpenCode projects |",
+        "| `project-files/.gitignore` | All projects |",
+        "",
+        "This setup folder is permanent — reuse it for every new project.",
         "",
         "## Prerequisites",
         "",
@@ -116,7 +162,6 @@ def render_readme(stack: dict[str, Any]) -> str:
                 lines.append("```")
             lines.append("")
 
-    # Obscura manual install section
     lines += [
         "## Obscura (Manual Install)",
         "",
@@ -136,20 +181,126 @@ def render_readme(stack: dict[str, Any]) -> str:
         "Use Obscura when you need to fetch/scrape a web page (read-only).",
         "Use Playwright when you need to interact with a browser (click, fill forms).",
         "",
-        "## Tolaria Vault",
+        "## Tolaria",
         "",
-        "This zip includes `tolaria_vault/` — a pre-populated knowledge base covering:",
-        "- Tool decisions and rationale",
-        "- Usage patterns and workflows",
-        "- Bug postmortems from setup",
-        "- New machine onboarding checklist",
-        "",
-        "Point the Tolaria desktop app at the extracted `tolaria_vault/` directory.",
-        "See `tolaria_vault/README.md` for connection instructions.",
+        "Tolaria is a developer knowledge vault — decisions, bugs, patterns, onboarding.",
+        "It is not part of automated setup. See `TOLARIA_SETUP.md` for manual wiring instructions.",
         "",
     ]
 
     return "\n".join(lines) + "\n"
+
+
+def _generate_tolaria_setup() -> str:
+    return """\
+# Tolaria Setup Guide
+
+Tolaria is a developer knowledge vault — stores decisions, bug postmortems, patterns, and lessons
+across projects. It is NOT part of the automated `/setup-stack` flow. Follow these steps manually.
+
+## Step 1: Download Tolaria Desktop App
+
+1. Go to https://github.com/refactoringhq/tolaria/releases
+2. Download the binary for your OS (macOS, Linux, Windows)
+3. Move to your Applications folder and launch it
+
+## Step 2: Create Your Vault
+
+1. Open Tolaria
+2. Choose **Create New Vault** → select or create a folder (e.g. `~/Documents/tolaria-vault`)
+3. Tolaria will initialise the vault structure automatically
+
+Vault organisation to get you started — create these folders inside your vault:
+- `decisions/` — why you chose tool X over Y
+- `bugs/` — postmortems for hard bugs (>30 min to fix)
+- `patterns/` — reusable approaches and workflows
+- `onboarding/` — setup checklists for new machines / team members
+
+## Step 3: Wire Up the MCP Server
+
+After Tolaria is installed, note the MCP server path. Common locations:
+- **macOS:** `~/Library/Application Support/tolaria/mcp-server/index.js`
+- **Linux:** `~/.local/share/tolaria/mcp-server/index.js`
+
+Replace `<TOLARIA_PATH>` and `<VAULT_PATH>` in the snippets below.
+
+### Claude Code — add to your project's `.mcp.json`
+
+```json
+{
+  "mcpServers": {
+    "context7": { "...existing entries...": "" },
+    "tolaria": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["<TOLARIA_PATH>/mcp-server/index.js"],
+      "env": {
+        "VAULT_PATH": "<VAULT_PATH>",
+        "WS_UI_PORT": "9711"
+      }
+    }
+  }
+}
+```
+
+### OpenCode — add to your project's `opencode.json`
+
+```json
+{
+  "mcp": {
+    "context7": { "...existing entries...": "" },
+    "tolaria": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["<TOLARIA_PATH>/mcp-server/index.js"],
+      "env": {
+        "VAULT_PATH": "<VAULT_PATH>",
+        "WS_UI_PORT": "9711"
+      }
+    }
+  }
+}
+```
+
+## Step 4: Test the Connection
+
+Restart Claude Code or OpenCode. In a new session, ask:
+
+> "Search Tolaria for any notes about decisions."
+
+If the MCP responds (even with "no results"), the connection is live.
+
+## Step 5: Using Tolaria Day-to-Day
+
+Claude uses Tolaria MCP tools automatically when the rules in `CLAUDE.md` / `AGENTS.md` are followed:
+- After any significant decision → Claude will search then write a decision note
+- After a hard bug (>30 min) → Claude will write a postmortem
+- After completing a project phase → Claude will write a lesson note
+
+Your vault grows passively as you work.
+"""
+
+
+def _build_project_files(staging: Path, repo_root: Path) -> None:
+    """Create project-files/ folder with pre-filled configs ready to copy to any project."""
+    pf = staging / "project-files"
+    pf.mkdir()
+
+    (pf / ".mcp.json").write_text(
+        json.dumps(_PROJECT_MCP_JSON, indent=2) + "\n", encoding="utf-8"
+    )
+    (pf / "opencode.json").write_text(
+        json.dumps(_PROJECT_OPENCODE_JSON, indent=2) + "\n", encoding="utf-8"
+    )
+
+    global_md = repo_root / "templates" / "claude_md" / "global.md"
+    if global_md.exists():
+        shutil.copy2(global_md, pf / "CLAUDE.md")
+        shutil.copy2(global_md, pf / "AGENTS.md")
+
+    gitignore_src = repo_root / "release_assets" / ".gitignore"
+    if gitignore_src.exists():
+        shutil.copy2(gitignore_src, pf / ".gitignore")
 
 
 def _rotate_releases(output_dir: Path, keep: int = 5) -> None:
@@ -159,16 +310,13 @@ def _rotate_releases(output_dir: Path, keep: int = 5) -> None:
     """
     archive_dir = output_dir / "archive"
 
-    # Gather all zips across both locations (excluding the one just built — caller moves it after)
     all_zips = sorted(output_dir.glob("ai-coding-stack-v*.zip")) + \
                sorted(archive_dir.glob("ai-coding-stack-v*.zip") if archive_dir.exists() else [])
-    # Sort by version string embedded in filename
     all_zips = sorted(all_zips, key=lambda p: p.name)
 
     if len(all_zips) <= keep:
         return
 
-    # Delete oldest beyond keep
     to_delete = all_zips[:len(all_zips) - keep]
     for z in to_delete:
         z.unlink(missing_ok=True)
@@ -183,7 +331,7 @@ def _archive_previous_releases(output_dir: Path) -> None:
         return
     archive_dir = output_dir / "archive"
     archive_dir.mkdir(exist_ok=True)
-    for z in zips[:-1]:  # all but the newest
+    for z in zips[:-1]:
         z.rename(archive_dir / z.name)
         sha = output_dir / (z.name + ".sha256")
         if sha.exists():
@@ -229,24 +377,27 @@ def build_release(version: str, output_dir: Path, repo_root: Path) -> Path:
         opencode_commands_dst.mkdir(parents=True)
         shutil.copy2(setup_stack_src, opencode_commands_dst / "setup-stack.md")
 
-        # Templates — only global.md and hooks
+        # Templates — skills, global.md, hooks
         templates_src = repo_root / "templates"
         if templates_src.exists():
             shutil.copytree(templates_src, staging / "templates")
 
-        # Tolaria vault
-        tolaria_vault_src = repo_root / "tolaria_vault"
-        if tolaria_vault_src.exists():
-            shutil.copytree(tolaria_vault_src, staging / "tolaria_vault")
+        # Pre-generated project-files/ (copy to your project after setup)
+        _build_project_files(staging, repo_root)
 
-        # Installer-mode CLAUDE.md / AGENTS.md
+        # Root CLAUDE.md / AGENTS.md — setup workspace instructions
         shutil.copy2(repo_root / "release_assets" / "CLAUDE.md", staging / "CLAUDE.md")
         shutil.copy2(repo_root / "release_assets" / "AGENTS.md", staging / "AGENTS.md")
 
-        # .gitignore
+        # .gitignore for the setup workspace itself
         gitignore_src = repo_root / "release_assets" / ".gitignore"
         if gitignore_src.exists():
             shutil.copy2(gitignore_src, staging / ".gitignore")
+
+        # TOLARIA_SETUP.md — manual vault setup guide
+        (staging / "TOLARIA_SETUP.md").write_text(
+            _generate_tolaria_setup(), encoding="utf-8"
+        )
 
         # Generate README from stack.toml
         stack = read_toml(repo_root / "stack.toml")
@@ -272,7 +423,6 @@ def build_release(version: str, output_dir: Path, repo_root: Path) -> Path:
         sha_path = zip_path.parent / (zip_path.name + ".sha256")
         sha_path.write_text(f"{digest}  {zip_path.name}\n", encoding="utf-8")
 
-        # Move previous releases to archive/, enforce 5-version limit
         _archive_previous_releases(output_dir)
         _rotate_releases(output_dir, keep=5)
 

@@ -101,7 +101,8 @@ def test_render_readme_includes_obscura_manual():
     md = render_readme(stack)
     assert "Obscura" in md
     assert "github.com/h4ckf0r0day/obscura" in md
-    assert "tolaria_vault" in md
+    assert "TOLARIA_SETUP.md" in md
+    assert "project-files/" in md
 
 
 def test_build_release_creates_zip(tmp_path):
@@ -119,15 +120,12 @@ def test_build_release_creates_zip(tmp_path):
     (repo / "prompts" / "setup-stack.md").write_text("# playbook", encoding="utf-8")
 
     (repo / "release_assets").mkdir()
-    (repo / "release_assets" / "CLAUDE.md").write_text("# installer claude", encoding="utf-8")
-    (repo / "release_assets" / "AGENTS.md").write_text("# installer agents", encoding="utf-8")
+    (repo / "release_assets" / "CLAUDE.md").write_text("# setup claude", encoding="utf-8")
+    (repo / "release_assets" / "AGENTS.md").write_text("# setup agents", encoding="utf-8")
     (repo / "release_assets" / ".gitignore").write_text("node_modules/\n", encoding="utf-8")
 
     (repo / "templates" / "claude_md").mkdir(parents=True)
     (repo / "templates" / "claude_md" / "global.md").write_text("# global", encoding="utf-8")
-
-    (repo / "tolaria_vault").mkdir()
-    (repo / "tolaria_vault" / "README.md").write_text("# vault", encoding="utf-8")
 
     output = tmp_path / "dist"
     output.mkdir()
@@ -146,9 +144,16 @@ def test_build_release_creates_zip(tmp_path):
     assert "CLAUDE.md" in names
     assert "AGENTS.md" in names
     assert "README.md" in names
+    assert "TOLARIA_SETUP.md" in names
     assert "templates/claude_md/global.md" in names
     assert ".gitignore" in names
-    assert "tolaria_vault/README.md" in names
+    assert "project-files/.mcp.json" in names
+    assert "project-files/opencode.json" in names
+    assert "project-files/CLAUDE.md" in names
+    assert "project-files/AGENTS.md" in names
+    assert "project-files/.gitignore" in names
+    # tolaria_vault no longer bundled
+    assert not any(n.startswith("tolaria_vault/") for n in names)
 
 
 def test_build_release_writes_sha256(tmp_path):

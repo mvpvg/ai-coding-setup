@@ -55,6 +55,89 @@ def _opencode_config_dir() -> Path:
     return Path(base).expanduser() / "opencode"
 
 
+def check_installed(kind: str, identifier: str = "") -> dict[str, Any]:
+    """Check whether a tool is already installed.
+
+    Returns {"installed": bool, "detail": str}.
+
+    kind values:
+      plugin        — Claude Code marketplace plugin (identifier = plugin id)
+      skill         — ~/.claude/skills/<identifier>/SKILL.md
+      uv-tool       — global uv tool (identifier = package name)
+      npm-global    — global pnpm package (identifier = package name)
+      mcp           — Claude Code .mcp.json entry (identifier = server name)
+      mcp-opencode  — OpenCode opencode.json entry (identifier = server name)
+      hooks         — .claude/hooks/ directory has files
+      global-claude-md — ~/.claude/CLAUDE.md exists
+    """
+    try:
+        if kind == "plugin":
+            result = subprocess.run(
+                ["claude", "plugin", "list"],
+                capture_output=True, text=True,
+            )
+            installed = identifier in result.stdout
+            return {"installed": installed, "detail": f"plugin list {'contains' if installed else 'missing'} {identifier}"}
+
+        if kind == "skill":
+            path = Path.home() / ".claude" / "skills" / identifier / "SKILL.md"
+            return {"installed": path.exists(), "detail": str(path)}
+
+        if kind == "uv-tool":
+            result = subprocess.run(
+                ["uv", "tool", "list"],
+                capture_output=True, text=True,
+            )
+            # uv tool list output: "package-name v1.2.3"
+            pkg_base = identifier.split("[")[0].lower()
+            installed = any(
+                line.split()[0].lower() == pkg_base
+                for line in result.stdout.splitlines() if line.strip()
+            )
+            return {"installed": installed, "detail": f"uv tool list {'contains' if installed else 'missing'} {pkg_base}"}
+
+        if kind == "npm-global":
+            result = subprocess.run(
+                ["pnpm", "list", "-g", "--depth=0"],
+                capture_output=True, text=True,
+            )
+            pkg_base = identifier.lstrip("@").split("/")[-1] if "/" in identifier else identifier.lstrip("@")
+            installed = identifier in result.stdout or pkg_base in result.stdout
+            return {"installed": installed, "detail": f"pnpm global {'contains' if installed else 'missing'} {identifier}"}
+
+        if kind == "mcp":
+            mcp_path = Path(".mcp.json")
+            if not mcp_path.exists():
+                return {"installed": False, "detail": ".mcp.json not found"}
+            data = json.loads(mcp_path.read_text(encoding="utf-8"))
+            installed = identifier in data.get("mcpServers", {})
+            return {"installed": installed, "detail": f".mcp.json {'has' if installed else 'missing'} {identifier}"}
+
+        if kind == "mcp-opencode":
+            cfg = _opencode_config_dir() / "opencode.json"
+            if not cfg.exists():
+                return {"installed": False, "detail": "opencode.json not found"}
+            data = json.loads(cfg.read_text(encoding="utf-8"))
+            installed = identifier in data.get("mcp", {})
+            return {"installed": installed, "detail": f"opencode.json {'has' if installed else 'missing'} {identifier}"}
+
+        if kind == "hooks":
+            hooks_dir = Path(".claude") / "hooks"
+            installed = hooks_dir.exists() and any(
+                f for f in hooks_dir.iterdir() if f.is_file() and f.suffix in (".sh", ".cmd")
+            )
+            return {"installed": installed, "detail": str(hooks_dir)}
+
+        if kind == "global-claude-md":
+            path = Path.home() / ".claude" / "CLAUDE.md"
+            return {"installed": path.exists(), "detail": str(path)}
+
+    except Exception as exc:
+        return {"installed": False, "detail": f"check error: {exc}"}
+
+    return {"installed": False, "detail": f"unknown kind: {kind}"}
+
+
 def _check_python_311() -> bool:
     return sys.version_info >= (3, 11)
 
@@ -230,6 +313,10 @@ def main() -> None:
     cp = sub.add_parser("check-prereqs", help="Check prereq keys, print JSON")
     cp.add_argument("keys", nargs="+")
 
+    ci = sub.add_parser("check-installed", help="Check if a tool is already installed, print JSON")
+    ci.add_argument("kind", choices=["plugin", "skill", "uv-tool", "npm-global", "mcp", "mcp-opencode", "hooks", "global-claude-md"])
+    ci.add_argument("identifier", nargs="?", default="", help="Tool ID / package name / server name")
+
     vh = sub.add_parser("verify-sha256")
     vh.add_argument("path")
     vh.add_argument("expected")
@@ -267,7 +354,10 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    if args.cmd == "check-prereqs":
+    if args.cmd == "check-installed":
+        result = check_installed(args.kind, args.identifier)
+        print(json.dumps(result))
+    elif args.cmd == "check-prereqs":
         result = check_prereqs(args.keys)
         print(json.dumps(result))
     elif args.cmd == "verify-sha256":

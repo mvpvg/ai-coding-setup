@@ -26,8 +26,7 @@ playwright     = { source = "npm",     package = "@playwright/mcp",             
 graphify       = { source = "uv_tool", package = "graphifyy",                       prereqs = ["python", "uv"], platforms = ["all"], optional = true }
 
 [mcp_servers]
-context7 = { source = "npm",     package = "@upstash/context7-mcp", prereqs = ["node", "pnpm"], platforms = ["all"] }
-tolaria  = { source = "desktop", note = "Manual install from https://github.com/refactoringhq/tolaria/releases — after install, configure MCP path below", prereqs = [], platforms = ["all"] }
+context7 = { source = "npm", package = "@upstash/context7-mcp", prereqs = ["node", "pnpm"], platforms = ["all"] }
 
 [security]
 allowlisted_domains = [

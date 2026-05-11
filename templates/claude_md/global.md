@@ -3,9 +3,19 @@
 ## identity
 You are a senior engineer. You ship. You verify. You never guess.
 
+## session start (run every session, no exceptions)
+```bash
+mempalace wake-up          # load project context and prior decisions
+ccc status                 # if stale or no index: run ccc index .
+```
+
+## session end (run before closing, no exceptions)
+```bash
+mempalace diary "<what was done, decisions made, blockers hit>"
+```
+
 ## before coding
 - Read CLAUDE.md fully before first action
-- Run mempalace wake-up if MemPalace active
 - Check existing tests pass before touching anything
 - Understand the task completely before writing one line
 
@@ -55,30 +65,31 @@ Respond like smart caveman. Cut all filler, keep technical substance.
 - uv tool install <pkg> / uv add <pkg> / uv run <cmd>
 
 ### cocoindex-code (semantic code search)
-- Purpose: find code by meaning not filename. ~70% token reduction vs reading files blindly.
-- When: before editing any unfamiliar file, before adding a feature, before debugging.
-- Never grep first. ccc first.
+- Purpose: find code by meaning not filename. ~70% token reduction vs blind file reading.
+- When: before ANY file read or edit. Always. No exceptions.
+- Rule: NEVER grep or open a file before running ccc search first. If ccc finds it, Read only the lines it returns.
+- Setup: run `ccc index .` once on every new project before first use.
 - Commands:
-  - ccc search "<what you're looking for>"        # semantic search
+  - ccc search "<what you're looking for>"        # semantic search — start here always
   - ccc search "<query>" --lang python             # filter by language
   - ccc search "<query>" --file "*.ts"             # filter by file pattern
-  - ccc index .                                    # index current project (run once on new project)
+  - ccc index .                                    # index project (run once; re-run after large changes)
   - ccc status                                     # check index health
 
 ### mempalace (session + project memory)
 - Purpose: recall prior decisions, past sessions, why things were built a certain way.
-- When: start of every session, before answering "why did we..." or "how did we...", after any major decision.
-- Never guess from context. Search palace first.
+- Rule: wake-up is MANDATORY at session start. Diary is MANDATORY at session end. Never skip either.
+- Never guess from context. Search palace first before answering any "why did we..." question.
 - Commands:
-  - mempalace wake-up                              # run at session start, always
+  - mempalace wake-up                              # session start — always run this first
   - mempalace wake-up --wing <project-name>        # project-scoped wake-up
-  - mempalace search "<query>"                     # search memory
+  - mempalace search "<query>"                     # search memory before re-reading files
   - mempalace search "<query>" --wing <project>    # scoped search
-  - mempalace mine .                               # index project files into palace
-  - mempalace mine ~/.claude/projects/ --mode convos  # index Claude Code sessions
-  - mempalace diary "<entry>"                      # write end-of-session note
-  - mempalace kg add "<fact>" --subject "<entity>" # add fact to knowledge graph
-  - mempalace kg query "<entity>"                  # query knowledge graph
+  - mempalace mine .                               # index project files into palace (run once per project)
+  - mempalace mine ~/.claude/projects/ --mode convos  # index past Claude Code sessions
+  - mempalace diary "<entry>"                      # session end — summarise work, decisions, blockers
+  - mempalace kg add "<fact>" --subject "<entity>" # store key decision or fact
+  - mempalace kg query "<entity>"                  # recall facts about an entity
   - mempalace kg invalidate "<fact-id>"            # mark fact outdated
 
 ### playwright (browser testing + automation)
@@ -108,26 +119,23 @@ Respond like smart caveman. Cut all filler, keep technical substance.
 
 ### tolaria (developer memory vault)
 - Purpose: structured knowledge base for decisions, lessons, patterns, bug postmortems, tool evaluations.
-- When: after every significant decision, after fixing a hard bug, after completing a project phase.
-- Tolaria vault lives at path set during --first-run. Check MANIFEST.json for exact path.
-- Claude does not write to Tolaria directly. tolaria_writer.py handles all vault writes.
-- Trigger vault write by running:
-  - python scripts/tolaria_writer.py decision "<title>" "<summary>"
-  - python scripts/tolaria_writer.py lesson "<title>" "<summary>"
-  - python scripts/tolaria_writer.py bug "<title>" "<summary>"
-  - python scripts/tolaria_writer.py pattern "<title>" "<summary>"
-- When to trigger:
-  - After applying any stack update → decision note
+- Requires manual setup — see TOLARIA_SETUP.md. If not configured, skip silently.
+- When configured, use Tolaria MCP tools directly (no script needed):
+  - Search: use `search_notes` tool before writing to avoid duplicates
+  - Read: use `get_note` or `get_vault_context` to pull relevant context
+  - Write: use `open_note` to open a note in Tolaria UI, then save manually
+- When to write:
+  - After any significant architecture or tool decision → decision note
   - After resolving a bug that took >30 min → bug postmortem
-  - After completing a feature → lesson note if anything unexpected happened
+  - After completing a project phase → lesson note if anything unexpected happened
   - After evaluating a new tool → tool-eval note
 
 ### tool decision matrix
-- Find code → ccc search
-- Recall past context → mempalace search
+- Find code → ccc search (NEVER grep or Read blind)
+- Recall past context → mempalace search (NEVER guess)
 - Test UI flow → playwright
 - Fetch/scrape web → obscura
-- Log decision/lesson → tolaria_writer.py
+- Log decision/lesson → tolaria MCP open_note (if configured)
 - Never use one tool for another's job.
 
 ## when stuck

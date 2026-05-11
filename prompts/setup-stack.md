@@ -2,164 +2,145 @@ Run an AI-guided installation of the curated AI coding stack.
 
 ## Flow
 
-1. **Greet and detect platform.** Ask the user:
-   > "Are you running **Claude Code** or **OpenCode**?"
-
-   Save the answer as `PLATFORM` (`claude-code` or `opencode`). All steps below branch on this.
-
-2. **Run prereq audit.** Read `stack.toml`, collect every unique prereq key across all `prereqs` arrays, then run:
+1. **Run prereq audit.** Read `stack.toml`, collect every unique prereq key across all `prereqs` arrays, then run:
    ```bash
    python setup_helpers.py check-prereqs <key1> <key2> ...
    ```
-   Render the result as a clean table.
+   Render the result as a clean table. For each missing prereq, briefly explain what it is and offer install commands per OS (macOS / Linux / Windows). Wait for the user to install before continuing. Re-run audit to confirm.
 
-3. **Resolve prereq gaps.** For each missing prereq, briefly explain what it is and offer install commands per OS (macOS / Linux / Windows). Wait for the user to install before continuing. Re-run audit to confirm.
+   Also note which platform CLIs are present:
+   - `claude-cli` present → Claude Code tools will be installed
+   - `opencode-cli` present → OpenCode is available (skills work for both)
 
-4. **Per-tool loop.** For each tool in `stack.toml` sections in order: `base_tools`, `global_tools`, `mcp_servers` — **skipping Tolaria until step 8**:
+2. **Per-tool loop.** For each tool in `stack.toml` sections in order: `base_tools`, `global_tools`, `mcp_servers`:
 
-   **Before installing each tool, check its `platforms` field:**
-   - `platforms = ["claude-code"]` → skip entirely when PLATFORM is `opencode`, explain why
-   - `platforms = ["all"]` → install on both, but use platform-specific method (see below)
+   **Before installing each tool:**
 
-   Skip tools marked `optional = true` by default — list them at the end and ask if the user wants any.
-   Re-check the tool's `prereqs`. If any are missing, skip with a clear reason.
-   Explain what the tool does and ask for confirmation before installing.
+   1. Check `platforms` field — if `["claude-code"]` and `claude-cli` prereq is missing, skip with reason.
+   2. Check if already installed using `check-installed`:
 
-   ### Claude Code install methods
+      | Tool source | Check command |
+      |------------|---------------|
+      | `marketplace` | `python setup_helpers.py check-installed plugin <id>` |
+      | `github` (skill) | `python setup_helpers.py check-installed skill <name>` |
+      | `uv_tool` | `python setup_helpers.py check-installed uv-tool <package>` |
+      | `npm` | `python setup_helpers.py check-installed npm-global <package>` |
+      | `mcp` | `python setup_helpers.py check-installed mcp <name>` |
+
+   3. **If already installed** → show: "✅ Already installed — **Skip (recommended)** / Reinstall"
+      Default to Skip. Only reinstall if user explicitly chooses.
+
+   4. **If not installed** → show: "**Install (recommended)** / Skip"
+      Default to Install. Ask for confirmation before running.
+
+   5. Check `prereqs` — if any are missing, skip with a clear reason.
+   6. Tools marked `optional = true` — list at the end, ask if the user wants them.
+
+   ### Install methods
 
    | Source | Command |
    |--------|---------|
    | `marketplace` | `claude plugin marketplace update <marketplace>` then `claude plugin install <id>` |
    | `npm` | `pnpm add -g <package>` |
    | `uv_tool` | `uv tool install "<package>[extras]"` or `uv tool install <package>` |
-   | `github` (skill) | `git clone https://github.com/<repo>` — skill loads via Claude Code |
+   | `github` (skill) | Clone repo then install SKILL.md — see below |
    | `desktop` | Show `note` field as manual instruction |
 
-   ### OpenCode install methods
-
-   | Source | Claude Code action | OpenCode equivalent |
-   |--------|-------------------|---------------------|
-   | `marketplace` | Install plugin | Install bundled SKILL.md replacements (see below) |
-   | `npm` (MCP) | `pnpm add -g <package>` | Same: `pnpm add -g <package>` |
-   | `uv_tool` | `uv tool install` | Same: `uv tool install` |
-   | `github` (skill) | Clone, loads as Claude Code skill | Clone repo + install SKILL.md via `install-skill` |
-   | `desktop` (MCP) | Write `.mcp.json` | Write `opencode.json` using `write-opencode-mcp` |
-
-   **Marketplace plugins on OpenCode — install bundled SKILL.md replacements:**
-
-   Instead of Superpowers and frontend-design plugins, install the bundled skill files:
+   **GitHub skills** — install for both Claude Code and OpenCode in one step:
    ```bash
-   # These replace Superpowers skills
-   python setup_helpers.py install-skill brainstorm     templates/skills/brainstorm/SKILL.md
-   python setup_helpers.py install-skill plan           templates/skills/plan/SKILL.md
-   python setup_helpers.py install-skill tdd            templates/skills/tdd/SKILL.md
-   python setup_helpers.py install-skill debug          templates/skills/debug/SKILL.md
-   python setup_helpers.py install-skill code-review    templates/skills/code-review/SKILL.md
+   # Clone once
+   git clone https://github.com/<repo> /tmp/<repo-name>
 
-   # This replaces the frontend-design plugin
+   # Install SKILL.md to ~/.claude/skills/<name>/SKILL.md
+   # (Claude Code and OpenCode both read skills from this location)
+   python setup_helpers.py install-skill <name> /tmp/<repo-name>/<skill-path>/SKILL.md
+   ```
+
+   Specific skill paths from stack.toml:
+   - `grill_with_docs` → `skills/engineering/grill-with-docs/SKILL.md`
+   - `diagnose` → `skills/engineering/diagnose/SKILL.md`
+   - `git_guardrails` → `skills/misc/git-guardrails-claude-code/SKILL.md`
+
+   **Bundled skills** (replace Superpowers and frontend-design plugins on OpenCode):
+   ```bash
+   python setup_helpers.py install-skill brainstorm    templates/skills/brainstorm/SKILL.md
+   python setup_helpers.py install-skill plan          templates/skills/plan/SKILL.md
+   python setup_helpers.py install-skill tdd           templates/skills/tdd/SKILL.md
+   python setup_helpers.py install-skill debug         templates/skills/debug/SKILL.md
+   python setup_helpers.py install-skill code-review   templates/skills/code-review/SKILL.md
    python setup_helpers.py install-skill frontend-design templates/skills/frontend-design/SKILL.md
    ```
-   All skills install to `~/.claude/skills/<name>/SKILL.md` — OpenCode reads them automatically.
+   These install to `~/.claude/skills/<name>/SKILL.md` and are read automatically by both editors.
 
-   **GitHub skills on OpenCode — install each as a skill:**
-   - `grill_with_docs`: `python setup_helpers.py install-skill grill-with-docs <cloned_repo>/skills/engineering/grill-with-docs/SKILL.md`
-   - `diagnose`: `python setup_helpers.py install-skill diagnose <cloned_repo>/skills/engineering/diagnose/SKILL.md`
-   - `git_guardrails`: `python setup_helpers.py install-skill git-guardrails <cloned_repo>/skills/misc/git-guardrails-claude-code/SKILL.md`
-
-   **git-guardrails hooks on OpenCode:** Skip the hook installation step — OpenCode has no pre/post execution hook system. The skill file provides the guidance but won't auto-block.
-
-   **MCP servers on OpenCode:** Use `write-opencode-mcp` instead of `write-mcp`:
+   **MCP servers** — write to both config formats so `project-files/` stays current:
    ```bash
-   # Claude Code
-   python setup_helpers.py write-mcp context7 '{"type":"stdio","command":"pnpm","args":["exec","@upstash/context7-mcp"]}'
-
-   # OpenCode (writes to ~/.config/opencode/opencode.json)
-   python setup_helpers.py write-opencode-mcp context7 '{"type":"stdio","command":"pnpm","args":["exec","@upstash/context7-mcp"]}'
+   python setup_helpers.py write-mcp <name> '<json>' --project-dir project-files
+   python setup_helpers.py write-opencode-mcp <name> '<json>' --project-dir project-files
    ```
 
-5. **Write CLAUDE.md and AGENTS.md:**
+3. **Write global CLAUDE.md:**
+
+   First check if it exists:
    ```bash
-   # Write global ~/.claude/CLAUDE.md (Claude Code reads this globally)
+   python setup_helpers.py check-installed global-claude-md
+   ```
+   If `installed: true` → ask before overwriting (**Skip recommended** / Overwrite).
+   If `installed: false` → proceed automatically.
+
+   ```bash
    python setup_helpers.py apply-template global_claude_md --project-dir ~
-
-   # Overwrite the installer-mode files with the standard agent rules
-   # CLAUDE.md = Claude Code reads this per-project
-   # AGENTS.md = OpenCode reads this per-project
-   cp templates/claude_md/global.md CLAUDE.md
-   cp templates/claude_md/global.md AGENTS.md
    ```
-   If `~/.claude/CLAUDE.md` already exists, ask the user before overwriting.
 
-   **OpenCode global rules:** Also install the global command for OpenCode:
+   **OpenCode global rules** — also install as a global OpenCode command:
    ```bash
-   # Only when PLATFORM is opencode
    python setup_helpers.py install-opencode-command agent-rules templates/claude_md/global.md
    ```
 
-6. **Optional hooks (Claude Code only):** If PLATFORM is `claude-code`, ask: "Install git-guardrails hooks? Blocks dangerous git commands with confirmation." If yes:
+4. **Optional hooks (Claude Code only):** Only if `claude-cli` prereq passed.
+   ```bash
+   python setup_helpers.py check-installed hooks
+   ```
+   If `installed: true` → "✅ Hooks already installed — **Skip (recommended)** / Reinstall".
+   If `installed: false` → ask: "Install git-guardrails hooks? Blocks dangerous git commands."
    ```bash
    python setup_helpers.py apply-template hooks
    ```
-   If PLATFORM is `opencode`, skip this step — OpenCode has no hook system.
 
-7. **Obscura (manual install):** Inform the user that Obscura requires a manual download — refer them to `README.md` in this folder for exact steps.
+5. **Tolaria:** ⚠️ Manual setup — not automated.
+   > "Tolaria requires manual configuration. See `TOLARIA_SETUP.md` in this folder for step-by-step instructions."
 
-8. **Tolaria (last):** Install Tolaria desktop app and configure MCP.
-   - Show the note from `stack.toml`: manual install from GitHub releases
-   - After user confirms Tolaria is installed, ask for the vault path
-   - **Claude Code:**
-     ```bash
-     python setup_helpers.py write-mcp tolaria '{"type":"stdio","command":"node","args":["<TOLARIA_INSTALL_PATH>/mcp-server/index.js"],"env":{"VAULT_PATH":"<vault_path>","WS_UI_PORT":"9711"}}'
-     ```
-   - **OpenCode:**
-     ```bash
-     python setup_helpers.py write-opencode-mcp tolaria '{"type":"stdio","command":"node","args":["<TOLARIA_INSTALL_PATH>/mcp-server/index.js"],"env":{"VAULT_PATH":"<vault_path>","WS_UI_PORT":"9711"}}'
-     ```
-   Common install paths: macOS `~/Library/Application Support/tolaria`, Linux `~/.local/share/tolaria`
+6. **Done.** Show a final report table:
 
-   **Vault tip:** This folder includes a pre-populated `tolaria_vault/` — offer to use it as the starting vault by pointing Tolaria at `<extracted_folder>/tolaria_vault/`.
-
-9. **Cleanup and archive.** After all tools are installed:
-   ```bash
-   ARCHIVE=_archive/bootstrap_$(date +%Y%m%d_%H%M%S)
-   mkdir -p "$ARCHIVE"
-   for item in templates tolaria_vault prompts setup_helpers.py stack.toml requirements.txt README.md; do
-     [ -e "$item" ] && mv "$item" "$ARCHIVE/"
-   done
    ```
-   `CLAUDE.md`, `AGENTS.md`, `.claude/`, `.opencode/`, `.gitignore`, `.mcp.json`, `opencode.json` are **not** archived.
+   ┌─────────────────────┬────────┬────────────────────────────────────┐
+   │ Tool                │ Status │ Notes                              │
+   ├─────────────────────┼────────┼────────────────────────────────────┤
+   │ cocoindex-code      │ ✅     │ installed                          │
+   │ mempalace           │ ✅     │ installed                          │
+   │ context7 MCP        │ ✅     │ written to project-files/          │
+   │ playwright MCP      │ ✅     │ written to project-files/          │
+   │ global CLAUDE.md    │ ✅     │ ~/.claude/CLAUDE.md written        │
+   │ Tolaria             │ ⚠️     │ manual — see TOLARIA_SETUP.md      │
+   └─────────────────────┴────────┴────────────────────────────────────┘
+   ```
 
-10. **Done.** Tell the user:
-    - Tools installed (list what was installed vs skipped)
-    - If OpenCode: confirm that bundled SKILL.md replacements were installed to `~/.claude/skills/`
-    - Global `~/.claude/CLAUDE.md` written
-    - Installer files archived to `_archive/bootstrap_.../`
-    - Suggest: open any project, run `mempalace wake-up`, run `ccc index .`
-
-## Platform summary
-
-| Capability | Claude Code | OpenCode |
-|-----------|-------------|---------|
-| Superpowers plugin | ✅ marketplace plugin | ✅ bundled SKILL.md files (brainstorm/plan/tdd/debug/code-review) |
-| frontend-design plugin | ✅ marketplace plugin | ✅ bundled SKILL.md |
-| grill-with-docs | ✅ skill | ✅ skill (from GitHub clone) |
-| diagnose | ✅ skill | ✅ skill (from GitHub clone) |
-| git-guardrails | ✅ skill + hooks | ✅ skill only (no hooks) |
-| cocoindex-code | ✅ | ✅ |
-| mempalace | ✅ | ✅ |
-| Context7 MCP | ✅ `.mcp.json` | ✅ `opencode.json` |
-| Playwright MCP | ✅ `.mcp.json` | ✅ `opencode.json` |
-| Tolaria MCP | ✅ `.mcp.json` | ✅ `opencode.json` |
-| CLAUDE.md / AGENTS.md | ✅ | ✅ |
+   Then tell the user:
+   > "Setup complete. Copy files from `project-files/` to each project you work in:
+   >
+   > **Claude Code projects:** `.mcp.json`, `CLAUDE.md`, `.gitignore`
+   >
+   > **OpenCode projects:** `opencode.json`, `AGENTS.md`, `.gitignore`
+   >
+   > This setup folder is permanent — re-run `/setup-stack` any time to install missing tools."
 
 ## Safety
 
 - Never run `curl | bash`. Never `eval`. Never `shell=True`.
 - Always use `setup_helpers.py download-verified` for binary downloads (sha256-verified, https-only, allowlisted domains).
-- Never commit `.env` or credentials. Update `.gitignore` if needed.
+- Never commit `.env` or credentials.
 - If any install step fails, stop the loop, report which step failed, and ask the user how to proceed.
 - Plugin installs (Claude Code): always run `claude plugin marketplace update <marketplace>` before `claude plugin install <id>`.
 
 ## Re-runs
 
-Safe to re-run. If `_archive/` exists, setup was previously completed — only missing tools will be installed.
+Safe to re-run. Already-installed tools default to Skip. Only missing tools will be installed.

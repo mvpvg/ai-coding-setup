@@ -143,6 +143,104 @@ def test_apply_template_invalid_name_raises(tmp_path):
         apply_template("not_a_template", tmp_path)
 
 
+def test_check_installed_skill_present(tmp_path, mocker):
+    from scripts.setup_helpers import check_installed
+    mocker.patch("scripts.setup_helpers.Path.home", return_value=tmp_path)
+    skill = tmp_path / ".claude" / "skills" / "brainstorm" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("# skill")
+    result = check_installed("skill", "brainstorm")
+    assert result["installed"] is True
+
+
+def test_check_installed_skill_missing(tmp_path, mocker):
+    from scripts.setup_helpers import check_installed
+    mocker.patch("scripts.setup_helpers.Path.home", return_value=tmp_path)
+    result = check_installed("skill", "brainstorm")
+    assert result["installed"] is False
+
+
+def test_check_installed_uv_tool_present(mocker):
+    from scripts.setup_helpers import check_installed
+    mocker.patch("scripts.setup_helpers.subprocess.run",
+                 return_value=type("R", (), {"stdout": "cocoindex-code v0.1.0\n", "returncode": 0})())
+    result = check_installed("uv-tool", "cocoindex-code")
+    assert result["installed"] is True
+
+
+def test_check_installed_uv_tool_missing(mocker):
+    from scripts.setup_helpers import check_installed
+    mocker.patch("scripts.setup_helpers.subprocess.run",
+                 return_value=type("R", (), {"stdout": "mempalace v0.2.0\n", "returncode": 0})())
+    result = check_installed("uv-tool", "cocoindex-code")
+    assert result["installed"] is False
+
+
+def test_check_installed_mcp_present(tmp_path):
+    from scripts.setup_helpers import check_installed
+    import os
+    orig = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        (tmp_path / ".mcp.json").write_text(json.dumps({"mcpServers": {"context7": {"type": "stdio"}}}))
+        result = check_installed("mcp", "context7")
+        assert result["installed"] is True
+    finally:
+        os.chdir(orig)
+
+
+def test_check_installed_mcp_missing(tmp_path):
+    from scripts.setup_helpers import check_installed
+    import os
+    orig = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        result = check_installed("mcp", "context7")
+        assert result["installed"] is False
+    finally:
+        os.chdir(orig)
+
+
+def test_check_installed_global_claude_md_present(tmp_path, mocker):
+    from scripts.setup_helpers import check_installed
+    mocker.patch("scripts.setup_helpers.Path.home", return_value=tmp_path)
+    p = tmp_path / ".claude" / "CLAUDE.md"
+    p.parent.mkdir(parents=True)
+    p.write_text("# rules")
+    result = check_installed("global-claude-md")
+    assert result["installed"] is True
+
+
+def test_check_installed_global_claude_md_missing(tmp_path, mocker):
+    from scripts.setup_helpers import check_installed
+    mocker.patch("scripts.setup_helpers.Path.home", return_value=tmp_path)
+    result = check_installed("global-claude-md")
+    assert result["installed"] is False
+
+
+def test_check_installed_hooks_present(tmp_path):
+    from scripts.setup_helpers import check_installed
+    import os
+    orig = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        hooks = tmp_path / ".claude" / "hooks"
+        hooks.mkdir(parents=True)
+        (hooks / "pre-tool.sh").write_text("#!/bin/bash")
+        result = check_installed("hooks")
+        assert result["installed"] is True
+    finally:
+        os.chdir(orig)
+
+
+def test_check_installed_opencode_mcp_present(tmp_path, mocker):
+    from scripts.setup_helpers import check_installed
+    mocker.patch("scripts.setup_helpers._opencode_config_dir", return_value=tmp_path)
+    (tmp_path / "opencode.json").write_text(json.dumps({"mcp": {"tolaria": {"type": "stdio"}}}))
+    result = check_installed("mcp-opencode", "tolaria")
+    assert result["installed"] is True
+
+
 def test_install_skill(tmp_path, mocker):
     from scripts.setup_helpers import install_skill
     mocker.patch("scripts.setup_helpers.Path.home", return_value=tmp_path)
