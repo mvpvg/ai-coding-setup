@@ -21,9 +21,8 @@ git_guardrails  = { source = "github", repo = "mattpocock/skills", path = "skill
 
 [global_tools]
 cocoindex_code = { source = "uv_tool", package = "cocoindex-code", extras = "full", prereqs = ["python", "uv"], platforms = ["all"] }
-mempalace      = { source = "uv_tool", package = "mempalace",                       prereqs = ["python", "uv"], platforms = ["all"] }
 playwright     = { source = "npm",     package = "@playwright/mcp",                 prereqs = ["node", "pnpm"], platforms = ["all"] }
-graphify       = { source = "uv_tool", package = "graphifyy",                       prereqs = ["python", "uv"], platforms = ["all"], optional = true }
+mem0           = { source = "uv_tool", package = "mem0ai",                          prereqs = ["python", "uv"], platforms = ["all"] }
 
 [mcp_servers]
 context7 = { source = "npm", package = "@upstash/context7-mcp", prereqs = ["node", "pnpm"], platforms = ["all"] }

@@ -1,244 +1,281 @@
 # AI Coding Stack
 
-An opinionated, curated AI coding setup for **Claude Code** and **OpenCode**. Covers skills, global CLI tools, and MCP servers — everything wired together so AI agents follow consistent workflows across every project.
+> Opinionated AI coding setup for **Claude Code** and **OpenCode** — skills, memory, MCP servers, and coding rules wired together so every session starts with full context and every agent follows the same workflow.
 
-This repository has two roles:
-- **Curation** — `stack.toml` is the single source of truth for what gets installed and why
-- **Release** — a release zip is built from this repo; users download it, run one command, and their machine is configured
+[![Tests](https://img.shields.io/badge/tests-53%20passing-brightgreen)](#running-tests)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue)](../../releases)
+[![License](https://img.shields.io/badge/license-MIT-lightgrey)](#)
+
+---
+
+## What This Is
+
+Most AI coding setups are a loose collection of prompts. This is a **managed stack** — a single `stack.toml` defines every tool, every skill, and every rule. One command installs everything. Updates are versioned and released as a zip.
+
+**Two audiences:**
+- **Users** — download the release zip, run `/setup-stack`, copy `project-files/` to your project. Done.
+- **Maintainers** — edit `stack.toml`, run tests, build a new zip, publish a release.
 
 ---
 
 ## What Gets Installed
 
-### Skills (global — work in both Claude Code and OpenCode)
+### Skills
 
-| Skill | What it does |
-|-------|-------------|
-| **Superpowers** | Brainstorm → plan → implement → review workflow. Includes TDD, code review, debug skills. Claude Code marketplace plugin; bundled SKILL.md files for OpenCode. |
-| **frontend-design** | Component design, accessibility, responsive layout, state management guidance. |
-| **grill-with-docs** | Forces Claude to read actual library docs before writing code — stops hallucinated APIs. |
-| **diagnose** | 4-phase root cause analysis before any fix. Stops random guessing. |
-| **git-guardrails** | Blocks dangerous git commands (force-push, reset --hard, etc.) and requires confirmation. |
+Skills are structured guides that activate when Claude recognises a matching situation. Installed globally — work in both Claude Code and OpenCode.
+
+| Skill | Activates when… |
+|-------|----------------|
+| **Superpowers** | Any implementation task — enforces brainstorm → plan → TDD → review workflow |
+| **frontend-design** | Building React components, pages, or any visual UI work |
+| **grill-with-docs** | About to use a library — forces reading actual docs before writing code |
+| **diagnose** | Something is broken — 4-phase root cause before any fix |
+| **git-guardrails** | Any git operation — blocks force-push, reset --hard, branch -D without confirmation |
+| **onboarding** | First session in an unfamiliar codebase — produces `docs/codebase-tour.md` |
+| **refactor** | Restructuring code without changing behaviour — Fowler catalog, one change at a time |
+| **pr-review** | Reviewing a pull request — severity-prefixed feedback (`[blocking]`, `[important]`, `[nit]`) |
+| **migration** | Changing a live database schema — expand/contract, rollback files, large-table tooling |
+| **profile** | System is slow — measure-before-optimize with per-stack profiler guidance |
 
 ### Global CLI Tools
 
+Installed via `uv tool install` — available in every project.
+
 | Tool | What it does |
 |------|-------------|
-| **cocoindex-code** (`ccc`) | Semantic code search — find the right file in one query instead of reading everything blindly. ~70% token reduction on unfamiliar codebases. |
-| **mempalace** | Session + project memory. Remembers decisions, past sessions, and why things were built a certain way. Survives across conversations. |
-| **Playwright MCP** | Browser automation and E2E test MCP server. Claude can click, fill forms, and verify UI without writing test scripts first. |
+| **cocoindex-code** (`ccc`) | Semantic code search. Find the right file by meaning, not filename. ~70% token reduction on unfamiliar codebases. |
+| **mem0** | Personal AI memory. Auto-extracts decisions and context during conversation. Stored locally in ChromaDB — no server, no signup. |
+| **Playwright MCP** | Browser automation MCP server. Claude can navigate, click, and verify UI flows without writing test scripts first. |
 
-### MCP Servers (pre-configured in `project-files/`)
+**Optional — manual install:**
+
+| Tool | What it does | Install |
+|------|-------------|---------|
+| **graphify** | Interactive Python dependency graph for large monorepos. | `uv tool install graphifyy` |
+
+### MCP Servers
+
+Pre-configured in `project-files/` — ready to copy to any project.
 
 | Server | What it does |
 |--------|-------------|
-| **Context7** | Pulls live, version-specific library documentation into Claude's context. No more hallucinated function signatures. |
-| **Playwright** | Browser MCP server for UI automation and testing. |
-| **Tolaria** | Developer knowledge vault — decisions, bug postmortems, patterns, onboarding checklists. Manual setup (see below). |
+| **Context7** | Live, version-specific library docs injected into Claude's context. No more hallucinated function signatures. |
+| **Playwright** | Browser MCP server for UI automation and E2E testing. |
+| **Sequential Thinking** | Structures Claude's reasoning as numbered, revisable steps that survive context compaction. |
+| **Tolaria** | Team knowledge vault — decisions, bug postmortems, patterns, onboarding checklists. Manual setup required (see below). |
 
-### Global Rules
+### Global Coding Rules
 
-A `~/.claude/CLAUDE.md` is written to your home directory. It enforces:
-- Session start/end rituals (mempalace wake-up, diary)
-- ccc-first rule — never grep or read files blind before searching semantically
-- TDD workflow — failing test before any implementation
-- Caveman-micro compression — terse, direct responses
-- Tool decision matrix — which tool to reach for and when
+`/setup-stack` writes a `~/.claude/CLAUDE.md` enforcing:
+
+- **PROJECT.md first** — read the living context doc before touching anything
+- **ccc before grep** — semantic search before blind file reads
+- **TDD** — failing test before any implementation
+- **Tool decision matrix** — mem0 for personal context, Tolaria for team knowledge, ccc for code search
+- **Caveman compression** — terse, direct responses; no filler
 
 ---
 
-## Quick Start (Users)
+## Quick Start
 
-### Step 1 — Download the latest release
+### 1. Download the latest release
 
-Go to [GitHub Releases](../../releases) and download `ai-coding-stack-vX.Y.Z.zip`.
+Go to [**Releases**](../../releases) and download `ai-coding-stack-vX.Y.Z.zip`.
 
-### Step 2 — Extract and open
+### 2. Extract and open
 
 ```bash
 unzip ai-coding-stack-vX.Y.Z.zip -d ~/ai-setup
 ```
 
-Open the `~/ai-setup` folder in **Claude Code** or **OpenCode**.
+Open `~/ai-setup` in **Claude Code** or **OpenCode**.
 
-### Step 3 — Run setup
+### 3. Run setup
 
 ```
 /setup-stack
 ```
 
-The agent will:
-1. Check all required tools (Python 3.11+, uv, pnpm, git, Node.js) and report any missing ones
-2. Install skills globally to `~/.claude/skills/`
-3. Install CLI tools (cocoindex-code, mempalace) via `uv tool install`
-4. Write your global coding rules to `~/.claude/CLAUDE.md`
-5. Optionally install git-guardrails hooks for the current project
-6. Show a final report table — share it with your sysadmin if anything is blocked
+The agent checks prerequisites, installs tools, writes your global `CLAUDE.md`, optionally installs Claude Code hooks, and shows a final status table. Already-installed tools default to **Skip** — safe to re-run at any time.
 
-Already-installed tools default to **Skip**. Safe to re-run at any time.
+**Prerequisites** (checked automatically):
 
-### Step 4 — Copy project files
-
-After setup, copy the contents of `project-files/` to any project you work in:
-
-| File | Copy to | For |
-|------|---------|-----|
-| `project-files/.mcp.json` | project root | Claude Code |
-| `project-files/opencode.json` | project root | OpenCode |
-| `project-files/CLAUDE.md` | project root | Claude Code |
-| `project-files/AGENTS.md` | project root | OpenCode |
-| `project-files/.gitignore` | project root | Both |
-
-These files are pre-filled with the correct MCP server configs. No editing needed unless you add Tolaria (see below).
-
-The `~/ai-setup` folder is **permanent** — reuse it for every new project, re-run `/setup-stack` to install any tools you skipped.
-
----
-
-## Tolaria (Manual Setup)
-
-Tolaria is a developer knowledge vault that stores decisions, bug postmortems, patterns, and onboarding checklists. It is intentionally not automated — vault paths are personal and vary per machine.
-
-See `TOLARIA_SETUP.md` inside the release zip for full step-by-step instructions. The short version:
-
-1. Download the Tolaria desktop app from [GitHub Releases](https://github.com/refactoringhq/tolaria/releases)
-2. Create a vault folder (e.g. `~/Documents/tolaria-vault`)
-3. Add the MCP server entry to your project's `.mcp.json` or `opencode.json`
-
----
-
-## Obscura (Manual Install)
-
-Obscura is a headless browser CLI for fetching and scraping web pages without Playwright overhead. It is not in the automated stack because it distributes as a binary.
-
-1. Download from [GitHub Releases](https://github.com/h4ckf0r0day/obscura/releases)
-2. Verify the SHA256 checksum from the release notes
-3. Move to PATH: `mv obscura /usr/local/bin/obscura && chmod +x /usr/local/bin/obscura`
-
-Use Obscura to **read/extract** web content. Use Playwright when you need to **click or interact**.
-
----
-
-## Prerequisites
-
-Run `/setup-stack` — it checks and reports these automatically:
-
-| Prereq | Install |
-|--------|---------|
-| Python 3.11+ | [python.org](https://www.python.org/downloads/) or `brew install python` |
+| Tool | Install |
+|------|---------|
+| Python 3.11+ | `brew install python` / [python.org](https://www.python.org/downloads/) |
 | uv | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| Node.js | [nodejs.org](https://nodejs.org/) or `brew install node` |
+| Node.js | `brew install node` / [nodejs.org](https://nodejs.org/) |
 | pnpm | `npm install -g pnpm` |
 | git | `brew install git` / `apt install git` |
 | Claude Code CLI | `npm install -g @anthropic-ai/claude-code` |
 
----
+### 4. Copy project files
 
-## For Maintainers — Updating the Stack
+Copy `project-files/` to each project you work in:
 
-### Edit `stack.toml`
+| File | Editor |
+|------|--------|
+| `.mcp.json` | Claude Code |
+| `opencode.json` | OpenCode |
+| `CLAUDE.md` | Claude Code |
+| `AGENTS.md` | OpenCode |
+| `.gitignore` | Both |
+| `PROJECT.md` | Both |
 
-`stack.toml` is the single source of truth. Each tool entry has:
-
-```toml
-tool_name = {
-  source    = "uv_tool",          # marketplace | github | uv_tool | npm | desktop
-  package   = "package-name",     # package identifier
-  prereqs   = ["python", "uv"],   # prereq keys checked before install
-  platforms = ["all"],            # "all" | ["claude-code"] | ["opencode"]
-  optional  = true,               # omit or false = installed by default
-}
-```
-
-### Build a Release
-
-```bash
-# Run tests first
-uv run pytest
-
-# Build zip — automatically archives previous versions, keeps latest 5
-uv run python -m scripts.build_release --version 0.4.0 --output dist/
-```
-
-Output:
-- `dist/ai-coding-stack-v0.4.0.zip` — release zip
-- `dist/ai-coding-stack-v0.4.0.zip.sha256` — checksum sidecar
-- Older versions auto-moved to `dist/archive/` (keeps latest 5 total)
-
-### Repo Structure
-
-```
-ai-coding-setup/
-  stack.toml                    # tool registry — edit this to add/update tools
-  scripts/
-    build_release.py            # builds the release zip
-    setup_helpers.py            # stdlib-only installer helpers (also bundled in zip)
-    lib/config.py               # TOML read/write utilities
-  prompts/
-    setup-stack.md              # /setup-stack playbook — registered as slash command in zip
-  templates/
-    claude_md/global.md         # global CLAUDE.md written to ~/.claude/CLAUDE.md
-    skills/                     # bundled SKILL.md files (brainstorm, plan, tdd, debug, etc.)
-    hooks/                      # git-guardrails hook scripts
-  release_assets/
-    CLAUDE.md                   # root CLAUDE.md in zip ("run /setup-stack to begin")
-    AGENTS.md                   # same for OpenCode
-    .gitignore                  # standard .gitignore copied to project-files/
-  tests/
-    test_setup_helpers.py       # unit tests for installer helpers
-    test_build_release.py       # unit tests for zip builder
-  dist/                         # built zips (gitignored)
-```
-
-### Running Tests
-
-```bash
-uv run pytest                   # all tests
-uv run pytest --tb=short -q     # quiet with short tracebacks
-```
+The `~/ai-setup` folder is **permanent** — reuse it for every new project.
 
 ---
 
-## How the Release Zip Is Structured
+## PROJECT.md — Living Context Doc
 
-When you extract the zip you get:
+The most effective tool against memory loss across sessions. Every project should have a `PROJECT.md` at its root with five sections:
 
 ```
-ai-coding-stack-vX.Y.Z/
-  README.md                     # manual install reference
-  TOLARIA_SETUP.md              # manual Tolaria vault + MCP guide
-  CLAUDE.md                     # "open here, run /setup-stack"
-  AGENTS.md                     # same for OpenCode
-  .gitignore                    # for the setup workspace itself
-  setup_helpers.py              # stdlib-only helper CLI (no pip install needed)
-  stack.toml                    # tool registry
-  requirements.txt              # empty — setup_helpers.py uses stdlib only
-  prompts/setup-stack.md        # raw playbook (for reference)
-  .claude/commands/setup-stack.md    # Claude Code slash command
-  .opencode/commands/setup-stack.md  # OpenCode slash command
-  templates/                    # skills and hooks used during setup
-  project-files/                # copy these to your project
-    .mcp.json                   # Context7 + Playwright MCP (Claude Code)
-    opencode.json               # Context7 + Playwright MCP (OpenCode)
-    CLAUDE.md                   # project coding rules (Claude Code)
-    AGENTS.md                   # project coding rules (OpenCode)
-    .gitignore                  # standard ignores
+## Current Task       — what you're actively working on
+## Recent Decisions   — architecture choices, with reasons
+## Failed Approaches  — what was tried and why it didn't work
+## Open Questions     — blockers and unresolved questions
+## Next Steps         — 2-5 concrete next actions
 ```
+
+The **SessionStart hook** reads it automatically at the start of every Claude Code session. The **PreCompact hook** updates it before context is compacted. Zero discipline required.
+
+The starter template is in `project-files/PROJECT.md`.
+
+---
+
+## Hooks (Claude Code)
+
+Installed to `.claude/hooks/` — run automatically, no commands needed.
+
+| Hook | When it fires | What it does |
+|------|--------------|-------------|
+| **SessionStart** | Session begins | Displays `PROJECT.md`, `ccc status`, recent mem0 memories, git status |
+| **PreCompact** | Before context compaction | Prompts Claude to checkpoint current state into `PROJECT.md` |
+| **pre-tool / post-tool** | Around every tool call | git-guardrails — blocks dangerous git operations |
+
+> OpenCode does not support hooks. OpenCode users should run `cat PROJECT.md` manually at session start.
+
+---
+
+## Tolaria — Team Knowledge Vault
+
+Tolaria stores shared decisions, bug postmortems, and patterns across the team. Not automated — vault paths vary per machine.
+
+See **`TOLARIA_SETUP.md`** in the release zip for full instructions. Short version:
+
+1. Download the desktop app from [refactoringhq/tolaria](https://github.com/refactoringhq/tolaria/releases)
+2. Create a vault folder (e.g. `~/Documents/tolaria-vault`)
+3. Add the MCP server entry to your project's `.mcp.json` or `opencode.json`
+
+> **mem0 vs Tolaria:** mem0 captures *personal* context automatically. Tolaria stores *team-shared* knowledge manually. Use both — they serve different purposes.
+
+---
+
+## Obscura — Headless Browser (Manual)
+
+Lightweight headless browser CLI for fetching and scraping pages without Playwright overhead. Distributed as a binary — not in the automated stack.
+
+1. Download from [h4ckf0r0day/obscura](https://github.com/h4ckf0r0day/obscura/releases)
+2. Verify the SHA256 checksum from the release notes
+3. `mv obscura /usr/local/bin/obscura && chmod +x /usr/local/bin/obscura`
+
+**Rule:** read/extract → Obscura. Click/interact → Playwright.
 
 ---
 
 ## Safety
 
-- No `curl | bash`, no `eval`, no `shell=True` anywhere in the tooling.
-- All subprocess calls use argument arrays.
-- All HTTP downloads go through a domain allowlist and are SHA256-verified (`setup_helpers.py download-verified`).
-- Secrets and credentials are never written to files — env vars only.
+| Guarantee | How |
+|-----------|-----|
+| No `curl \| bash` or `eval` | All installs use explicit package manager calls |
+| No `shell=True` | All subprocess calls use argument arrays |
+| Download integrity | Domain allowlist + SHA256 verification via `setup_helpers.py download-verified` |
+| No credential leakage | Secrets never written to files — env vars only |
+
+---
+
+## For Maintainers
+
+### Adding or updating a tool
+
+Edit `stack.toml` — the single source of truth:
+
+```toml
+[global_tools]
+my_tool = {
+  source   = "uv_tool",        # marketplace | github | uv_tool | npm | desktop
+  package  = "my-package",
+  prereqs  = ["python", "uv"],
+  platforms = ["all"],         # "all" | ["claude-code"] | ["opencode"]
+  optional = true,             # omit = installed by default
+}
+```
+
+### Building a release
+
+```bash
+uv run pytest                  # must be clean first
+uv run python -m scripts.build_release --version X.Y.Z --output dist/
+```
+
+Outputs `dist/ai-coding-stack-vX.Y.Z.zip` + `.sha256` sidecar. Previous versions auto-archived (keeps latest 5).
+
+### Running tests
+
+```bash
+uv run pytest                  # all tests
+uv run pytest --tb=short -q    # quiet mode
+```
+
+### Repo layout
+
+```
+ai-coding-setup/
+├── stack.toml                     # tool registry
+├── scripts/
+│   ├── build_release.py           # builds the release zip
+│   ├── setup_helpers.py           # stdlib-only installer (bundled in zip)
+│   └── lib/config.py              # TOML utilities
+├── prompts/
+│   └── setup-stack.md             # /setup-stack playbook + slash command
+├── templates/
+│   ├── claude_md/global.md        # global CLAUDE.md → ~/.claude/CLAUDE.md
+│   ├── hooks/                     # SessionStart, PreCompact, git-guardrails
+│   ├── project_md/PROJECT.md      # PROJECT.md starter template
+│   └── skills/                    # bundled SKILL.md files
+├── release_assets/                # files copied verbatim into the zip root
+├── tests/                         # pytest suite
+└── dist/                          # built zips (gitignored)
+```
+
+### Release zip layout
+
+```
+ai-coding-stack-vX.Y.Z/
+├── CLAUDE.md / AGENTS.md          # "open here, run /setup-stack"
+├── README.md                      # manual install reference
+├── TOLARIA_SETUP.md               # Tolaria vault + MCP wiring guide
+├── MEM0_SETUP.md                  # mem0 install and LLM provider setup
+├── GITHUB_MCP_GUIDE.md            # optional GitHub MCP guide
+├── setup_helpers.py               # stdlib-only helper CLI
+├── stack.toml
+├── .claude/commands/setup-stack.md
+├── .opencode/commands/setup-stack.md
+├── templates/                     # skills, hooks, PROJECT.md template
+└── project-files/                 # copy these to your project
+    ├── .mcp.json                  # Context7 + Playwright + Sequential Thinking
+    ├── opencode.json
+    ├── CLAUDE.md / AGENTS.md      # project coding rules
+    ├── .gitignore
+    └── PROJECT.md                 # living context doc starter
+```
 
 ---
 
 ## Contributing
 
-1. Fork, create a feature branch
-2. Edit `stack.toml` to add or update a tool
-3. Run `uv run pytest` — all tests must pass
-4. Open a PR with: what tool, why it belongs in the stack, which platform(s)
+1. Fork and create a feature branch
+2. Make your changes — add a tool to `stack.toml`, add a skill to `templates/skills/`, etc.
+3. `uv run pytest` — all tests must pass
+4. Open a PR describing: what changed, why it belongs in the stack, which platforms it targets

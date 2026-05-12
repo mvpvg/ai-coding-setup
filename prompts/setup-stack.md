@@ -63,12 +63,17 @@ Run an AI-guided installation of the curated AI coding stack.
 
    **Bundled skills** (replace Superpowers and frontend-design plugins on OpenCode):
    ```bash
-   python setup_helpers.py install-skill brainstorm    templates/skills/brainstorm/SKILL.md
-   python setup_helpers.py install-skill plan          templates/skills/plan/SKILL.md
-   python setup_helpers.py install-skill tdd           templates/skills/tdd/SKILL.md
-   python setup_helpers.py install-skill debug         templates/skills/debug/SKILL.md
-   python setup_helpers.py install-skill code-review   templates/skills/code-review/SKILL.md
+   python setup_helpers.py install-skill brainstorm     templates/skills/brainstorm/SKILL.md
+   python setup_helpers.py install-skill plan           templates/skills/plan/SKILL.md
+   python setup_helpers.py install-skill tdd            templates/skills/tdd/SKILL.md
+   python setup_helpers.py install-skill debug          templates/skills/debug/SKILL.md
+   python setup_helpers.py install-skill code-review    templates/skills/code-review/SKILL.md
    python setup_helpers.py install-skill frontend-design templates/skills/frontend-design/SKILL.md
+   python setup_helpers.py install-skill onboarding    templates/skills/onboarding/SKILL.md
+   python setup_helpers.py install-skill refactor      templates/skills/refactor/SKILL.md
+   python setup_helpers.py install-skill pr-review     templates/skills/pr-review/SKILL.md
+   python setup_helpers.py install-skill migration     templates/skills/migration/SKILL.md
+   python setup_helpers.py install-skill profile       templates/skills/profile/SKILL.md
    ```
    These install to `~/.claude/skills/<name>/SKILL.md` and are read automatically by both editors.
 
@@ -96,15 +101,30 @@ Run an AI-guided installation of the curated AI coding stack.
    python setup_helpers.py install-opencode-command agent-rules templates/claude_md/global.md
    ```
 
-4. **Optional hooks (Claude Code only):** Only if `claude-cli` prereq passed.
+4. **Install Claude Code hooks (Claude Code only):** Only if `claude-cli` prereq passed.
    ```bash
    python setup_helpers.py check-installed hooks
    ```
-   If `installed: true` → "✅ Hooks already installed — **Skip (recommended)** / Reinstall".
-   If `installed: false` → ask: "Install git-guardrails hooks? Blocks dangerous git commands."
+   If `installed: false` → ask: "Install Claude Code hooks? Installs:
+   - **session-start.sh** — surfaces PROJECT.md, ccc status, recent mem0 memories
+   - **pre-compact.sh** — auto-checkpoints session state to PROJECT.md before compaction
+   - **git-guardrails hooks** — blocks dangerous git commands"
+
+   If yes:
    ```bash
    python setup_helpers.py apply-template hooks
    ```
+
+   Configure hooks in `~/.claude/settings.json`:
+   ```json
+   {
+     "hooks": {
+       "SessionStart": [{"hooks": [{"type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh"}]}],
+       "PreCompact":   [{"hooks": [{"type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/pre-compact.sh"}]}]
+     }
+   }
+   ```
+   Ask user before modifying settings.json — show them the diff first.
 
 5. **Tolaria:** ⚠️ Manual setup — not automated.
    > "Tolaria requires manual configuration. See `TOLARIA_SETUP.md` in this folder for step-by-step instructions."
@@ -116,7 +136,7 @@ Run an AI-guided installation of the curated AI coding stack.
    │ Tool                │ Status │ Notes                              │
    ├─────────────────────┼────────┼────────────────────────────────────┤
    │ cocoindex-code      │ ✅     │ installed                          │
-   │ mempalace           │ ✅     │ installed                          │
+   │ mem0                │ ✅     │ installed                          │
    │ context7 MCP        │ ✅     │ written to project-files/          │
    │ playwright MCP      │ ✅     │ written to project-files/          │
    │ global CLAUDE.md    │ ✅     │ ~/.claude/CLAUDE.md written        │

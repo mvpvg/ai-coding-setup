@@ -302,6 +302,13 @@ def apply_template(template_name: str, project_dir: Path, project_type: str = "b
             dest = project_dir / ".claude" / "CLAUDE.md"
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, dest)
+    elif template_name == "project_md":
+        src = templates_root / "project_md" / "PROJECT.md"
+        if src.exists():
+            dest = project_dir / "PROJECT.md"
+            if dest.exists():
+                return  # don't overwrite existing
+            shutil.copy2(src, dest)
     else:
         raise ValueError(f"Unknown template: {template_name}")
 
@@ -348,7 +355,7 @@ def main() -> None:
                      help="Install to .opencode/commands/ instead of global config")
 
     at = sub.add_parser("apply-template")
-    at.add_argument("template_name", choices=["hooks", "global_claude_md"])
+    at.add_argument("template_name", choices=["hooks", "global_claude_md", "project_md"])
     at.add_argument("--project-type", default="base")
     at.add_argument("--project-dir", default=".")
 

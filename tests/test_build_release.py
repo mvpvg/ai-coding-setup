@@ -127,6 +127,9 @@ def test_build_release_creates_zip(tmp_path):
     (repo / "templates" / "claude_md").mkdir(parents=True)
     (repo / "templates" / "claude_md" / "global.md").write_text("# global", encoding="utf-8")
 
+    (repo / "templates" / "project_md").mkdir(parents=True)
+    (repo / "templates" / "project_md" / "PROJECT.md").write_text("# Project State", encoding="utf-8")
+
     output = tmp_path / "dist"
     output.mkdir()
 
@@ -145,6 +148,9 @@ def test_build_release_creates_zip(tmp_path):
     assert "AGENTS.md" in names
     assert "README.md" in names
     assert "TOLARIA_SETUP.md" in names
+    assert "MEM0_SETUP.md" in names
+    assert "GITHUB_MCP_GUIDE.md" in names
+    assert "project-files/PROJECT.md" in names
     assert "templates/claude_md/global.md" in names
     assert ".gitignore" in names
     assert "project-files/.mcp.json" in names
@@ -154,6 +160,14 @@ def test_build_release_creates_zip(tmp_path):
     assert "project-files/.gitignore" in names
     # tolaria_vault no longer bundled
     assert not any(n.startswith("tolaria_vault/") for n in names)
+
+    # sequential-thinking MCP present in both config files
+    import json, zipfile as _zf
+    with _zf.ZipFile(zip_path) as zf:
+        mcp = json.loads(zf.read("project-files/.mcp.json"))
+        assert "sequential-thinking" in mcp["mcpServers"]
+        opencode = json.loads(zf.read("project-files/opencode.json"))
+        assert "sequential-thinking" in opencode["mcp"]
 
 
 def test_build_release_writes_sha256(tmp_path):
