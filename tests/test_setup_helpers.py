@@ -202,7 +202,7 @@ def test_check_installed_uv_tool_present(mocker):
 def test_check_installed_uv_tool_missing(mocker):
     from scripts.setup_helpers import check_installed
     mocker.patch("scripts.setup_helpers.subprocess.run",
-                 return_value=type("R", (), {"stdout": "mempalace v0.2.0\n", "returncode": 0})())
+                 return_value=type("R", (), {"stdout": "mem0ai v0.2.0\n", "returncode": 0})())
     result = check_installed("uv-tool", "cocoindex-code")
     assert result["installed"] is False
 
