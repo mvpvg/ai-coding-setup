@@ -138,6 +138,37 @@ def test_apply_template_global_claude_md(tmp_path, mocker):
     assert dest.read_text() == "# Global Rules"
 
 
+def test_apply_template_project_md(tmp_path, mocker):
+    fake_templates = tmp_path / "templates"
+    (fake_templates / "project_md").mkdir(parents=True)
+    (fake_templates / "project_md" / "PROJECT.md").write_text("# Project State", encoding="utf-8")
+
+    mocker.patch("scripts.setup_helpers._templates_root", return_value=fake_templates)
+
+    project_dir = tmp_path / "proj"
+    project_dir.mkdir()
+    apply_template("project_md", project_dir)
+
+    assert (project_dir / "PROJECT.md").exists()
+    assert (project_dir / "PROJECT.md").read_text() == "# Project State"
+
+
+def test_apply_template_project_md_no_overwrite(tmp_path, mocker):
+    fake_templates = tmp_path / "templates"
+    (fake_templates / "project_md").mkdir(parents=True)
+    (fake_templates / "project_md" / "PROJECT.md").write_text("# Template", encoding="utf-8")
+
+    mocker.patch("scripts.setup_helpers._templates_root", return_value=fake_templates)
+
+    project_dir = tmp_path / "proj"
+    project_dir.mkdir()
+    (project_dir / "PROJECT.md").write_text("# Existing", encoding="utf-8")
+
+    apply_template("project_md", project_dir)
+
+    assert (project_dir / "PROJECT.md").read_text() == "# Existing"
+
+
 def test_apply_template_invalid_name_raises(tmp_path):
     with pytest.raises(ValueError, match="Unknown template"):
         apply_template("not_a_template", tmp_path)
@@ -285,3 +316,15 @@ def test_install_opencode_command_local(tmp_path):
         assert dest.read_text() == "# grill content"
     finally:
         os.chdir(orig)
+
+
+def test_stack_does_not_install_mempalace():
+    from scripts.lib.config import read_toml
+    stack = read_toml(Path("stack.toml"))
+    all_tools = {
+        **stack.get("global_tools", {}),
+        **stack.get("base_tools", {}),
+        **stack.get("mcp_servers", {}),
+    }
+    assert "mempalace" not in all_tools
+    assert "mem0" in stack.get("global_tools", {})

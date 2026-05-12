@@ -24,6 +24,11 @@ _PROJECT_MCP_JSON: dict[str, Any] = {
             "command": "pnpm",
             "args": ["exec", "@playwright/mcp@latest"],
         },
+        "sequential-thinking": {
+            "type": "stdio",
+            "command": "pnpm",
+            "args": ["dlx", "-y", "@modelcontextprotocol/server-sequential-thinking"],
+        },
     }
 }
 
@@ -38,6 +43,11 @@ _PROJECT_OPENCODE_JSON: dict[str, Any] = {
             "type": "stdio",
             "command": "pnpm",
             "args": ["exec", "@playwright/mcp@latest"],
+        },
+        "sequential-thinking": {
+            "type": "stdio",
+            "command": "pnpm",
+            "args": ["dlx", "-y", "@modelcontextprotocol/server-sequential-thinking"],
         },
     }
 }
@@ -281,6 +291,167 @@ Your vault grows passively as you work.
 """
 
 
+def _generate_mem0_setup() -> str:
+    return """\
+# mem0 Setup Guide
+
+mem0 is your **personal AI memory** — automatically extracts decisions, context,
+and patterns from your sessions. Stored locally at `~/.mem0/`. Works offline.
+
+For **team-shared knowledge** (architecture, conventions, postmortems), use Tolaria — not mem0.
+
+## Install
+
+```bash
+uv tool install mem0ai
+```
+
+Verify:
+```bash
+mem0 --version
+```
+
+## Configure LLM Provider
+
+mem0 uses an LLM to extract facts from your conversations. Set your OpenRouter key:
+
+```bash
+export OPENROUTER_API_KEY=<your-org-provided-key>
+```
+
+Add to `~/.zshrc` or `~/.bashrc` for persistence.
+
+mem0 will use OpenRouter via LiteLLM. Default model: `openrouter/anthropic/claude-3.5-haiku`
+(cheap, fast extraction). Override via `MEM0_MODEL` env var if needed.
+
+## Vector Store: Local ChromaDB (Default)
+
+mem0 ships with ChromaDB embedded — no separate service to run.
+Memories persist in `~/.mem0/chroma/`. Survives reboots. Works offline.
+
+## Add mem0 MCP to Your Project
+
+Edit your project's `.mcp.json` (Claude Code) or `opencode.json` (OpenCode):
+
+```json
+{
+  "mcpServers": {
+    "mem0": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["tool", "run", "mem0-mcp"]
+    }
+  }
+}
+```
+
+After adding, restart Claude Code / OpenCode. Verify with:
+
+> "Search my mem0 memory for anything."
+
+## Daily Use — No Commands Needed
+
+mem0 captures facts **automatically** during conversation via its MCP server.
+Claude searches mem0 automatically when relevant context is needed.
+
+Manual commands (rare):
+```bash
+mem0 search "<query>"      # search if MCP isn't loaded
+mem0 add "<fact>"          # add a specific fact manually
+mem0 list --limit 20       # recent memories
+```
+
+## If You Outgrow Local (Team Deployment)
+
+For teams that want shared memory across developers (rare — Tolaria usually fits better):
+
+1. Deploy Qdrant via Docker on a team server (`docker run -p 6333:6333 qdrant/qdrant`)
+2. Each dev sets `MEM0_VECTOR_STORE=qdrant` and `MEM0_QDRANT_HOST=https://team.internal:6333`
+3. Namespace via `user_id` (personal vs `org-shared`)
+
+For most teams, **local-only is the right answer.** Personal memory shouldn't be shared.
+
+## Privacy Note
+
+Fact extraction calls OpenRouter (an external API) with snippets of your conversation.
+Don't use mem0 in sessions that handle real production credentials or sensitive data
+unless your org has approved OpenRouter for that use.
+"""
+
+
+def _generate_github_mcp_guide() -> str:
+    return """\
+# GitHub MCP — Informational Guide
+
+The official GitHub MCP server gives Claude direct access to:
+- Issues (read, create, comment, close)
+- Pull requests (read, review, merge)
+- Commits, branches, releases
+- Repo file contents (read)
+
+**Not auto-installed** — add it only if your workflow benefits.
+
+## When It's Worth Adding
+
+- Team uses issue-driven development ("work on issue #42" instead of explaining context)
+- You spend significant time in PR review cycles
+- You frequently reference past issues for context
+- Async/distributed team where work handoffs happen via GitHub
+
+## When to Skip
+
+- Solo dev or small team with minimal issue tracking
+- You prefer keeping Claude focused on code, not coordination
+- Compliance/security restrictions on AI tools accessing your code repo
+
+## Install
+
+```bash
+pnpm add -g @modelcontextprotocol/server-github
+```
+
+## Configure
+
+Add to your `.mcp.json` (Claude Code) or `opencode.json` (OpenCode):
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "type": "stdio",
+      "command": "pnpm",
+      "args": ["exec", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+Token setup:
+```bash
+gh auth login                                    # or set GITHUB_TOKEN directly
+export GITHUB_TOKEN=$(gh auth token)             # in ~/.zshrc
+```
+
+## Useful Patterns
+
+Once installed, you can prompt Claude with things like:
+- "What's the context for issue #42?"
+- "Open a PR for the current branch with a summary of changes"
+- "Review the last 5 PRs touching auth/"
+- "Find issues tagged 'bug' in the auth area"
+
+## Permissions
+
+The token determines what Claude can do. For safety:
+- Use a fine-grained token scoped to the repos you want Claude to touch
+- Avoid `repo:write` scope on tokens used during exploratory work
+- Generate a separate token for AI use; rotate quarterly
+"""
+
+
 def _build_project_files(staging: Path, repo_root: Path) -> None:
     """Create project-files/ folder with pre-filled configs ready to copy to any project."""
     pf = staging / "project-files"
@@ -301,6 +472,10 @@ def _build_project_files(staging: Path, repo_root: Path) -> None:
     gitignore_src = repo_root / "release_assets" / ".gitignore"
     if gitignore_src.exists():
         shutil.copy2(gitignore_src, pf / ".gitignore")
+
+    project_md_src = repo_root / "templates" / "project_md" / "PROJECT.md"
+    if project_md_src.exists():
+        shutil.copy2(project_md_src, pf / "PROJECT.md")
 
 
 def _rotate_releases(output_dir: Path, keep: int = 5) -> None:
@@ -398,6 +573,8 @@ def build_release(version: str, output_dir: Path, repo_root: Path) -> Path:
         (staging / "TOLARIA_SETUP.md").write_text(
             _generate_tolaria_setup(), encoding="utf-8"
         )
+        (staging / "MEM0_SETUP.md").write_text(_generate_mem0_setup(), encoding="utf-8")
+        (staging / "GITHUB_MCP_GUIDE.md").write_text(_generate_github_mcp_guide(), encoding="utf-8")
 
         # Generate README from stack.toml
         stack = read_toml(repo_root / "stack.toml")

@@ -19,14 +19,25 @@ This repository has two roles:
 | **grill-with-docs** | Forces Claude to read actual library docs before writing code — stops hallucinated APIs. |
 | **diagnose** | 4-phase root cause analysis before any fix. Stops random guessing. |
 | **git-guardrails** | Blocks dangerous git commands (force-push, reset --hard, etc.) and requires confirmation. |
+| **onboarding** | Structured codebase exploration — produces written architecture summary (`docs/codebase-tour.md`). |
+| **refactor** | Martin Fowler-style refactoring patterns, one change at a time, tests before touching anything. |
+| **pr-review** | Structured GitHub PR review with severity-prefixed feedback (`[blocking]`, `[important]`, etc.). |
+| **migration** | Safe DB migration patterns — expand/contract, online migrations for large tables. |
+| **profile** | Measure-before-optimize performance debugging with per-stack tool guidance. |
 
 ### Global CLI Tools
 
 | Tool | What it does |
 |------|-------------|
 | **cocoindex-code** (`ccc`) | Semantic code search — find the right file in one query instead of reading everything blindly. ~70% token reduction on unfamiliar codebases. |
-| **mempalace** | Session + project memory. Remembers decisions, past sessions, and why things were built a certain way. Survives across conversations. |
+| **mem0** | Auto-extracting personal AI memory. Captures facts passively during conversation. Local ChromaDB by default — no server needed. |
 | **Playwright MCP** | Browser automation and E2E test MCP server. Claude can click, fill forms, and verify UI without writing test scripts first. |
+
+**Optional (manual install):**
+
+| Tool | What it does | Install |
+|------|-------------|---------|
+| **graphify** | Visualises Python codebases as interactive dependency graphs. Useful for large monorepos. | `uv tool install graphifyy` |
 
 ### MCP Servers (pre-configured in `project-files/`)
 
@@ -34,12 +45,13 @@ This repository has two roles:
 |--------|-------------|
 | **Context7** | Pulls live, version-specific library documentation into Claude's context. No more hallucinated function signatures. |
 | **Playwright** | Browser MCP server for UI automation and testing. |
+| **Sequential Thinking** | Forces Claude to reason in numbered, revisable steps. Steps survive compaction. |
 | **Tolaria** | Developer knowledge vault — decisions, bug postmortems, patterns, onboarding checklists. Manual setup (see below). |
 
 ### Global Rules
 
 A `~/.claude/CLAUDE.md` is written to your home directory. It enforces:
-- Session start/end rituals (mempalace wake-up, diary)
+- Session start: read `PROJECT.md`, check ccc index health (automated via SessionStart hook)
 - ccc-first rule — never grep or read files blind before searching semantically
 - TDD workflow — failing test before any implementation
 - Caveman-micro compression — terse, direct responses
@@ -70,9 +82,9 @@ Open the `~/ai-setup` folder in **Claude Code** or **OpenCode**.
 The agent will:
 1. Check all required tools (Python 3.11+, uv, pnpm, git, Node.js) and report any missing ones
 2. Install skills globally to `~/.claude/skills/`
-3. Install CLI tools (cocoindex-code, mempalace) via `uv tool install`
+3. Install CLI tools (cocoindex-code, mem0) via `uv tool install`
 4. Write your global coding rules to `~/.claude/CLAUDE.md`
-5. Optionally install git-guardrails hooks for the current project
+5. Optionally install Claude Code hooks (SessionStart + PreCompact + git-guardrails)
 6. Show a final report table — share it with your sysadmin if anything is blocked
 
 Already-installed tools default to **Skip**. Safe to re-run at any time.
@@ -88,6 +100,7 @@ After setup, copy the contents of `project-files/` to any project you work in:
 | `project-files/CLAUDE.md` | project root | Claude Code |
 | `project-files/AGENTS.md` | project root | OpenCode |
 | `project-files/.gitignore` | project root | Both |
+| `project-files/PROJECT.md` | project root | Both |
 
 These files are pre-filled with the correct MCP server configs. No editing needed unless you add Tolaria (see below).
 
@@ -104,6 +117,31 @@ See `TOLARIA_SETUP.md` inside the release zip for full step-by-step instructions
 1. Download the Tolaria desktop app from [GitHub Releases](https://github.com/refactoringhq/tolaria/releases)
 2. Create a vault folder (e.g. `~/Documents/tolaria-vault`)
 3. Add the MCP server entry to your project's `.mcp.json` or `opencode.json`
+
+---
+
+## PROJECT.md — Living Context Doc
+
+Every project should have a `PROJECT.md` at its root. It's a small file with five required sections:
+- Current Task
+- Recent Decisions
+- Failed Approaches
+- Open Questions / Blockers
+- Next Steps
+
+The Claude Code SessionStart hook reads it at session start. The PreCompact hook updates it before context compaction. This is the single most effective tool against memory loss across sessions.
+
+The setup writes a starter `PROJECT.md` to `project-files/` — copy it to each new project.
+
+---
+
+## Hooks
+
+Claude Code SessionStart and PreCompact hooks are installed to `.claude/hooks/`. They run automatically:
+- **SessionStart** — surfaces PROJECT.md, ccc status, mem0 recent memories, git status at the start of every session
+- **PreCompact** — appends a session checkpoint to PROJECT.md before context is compacted
+
+OpenCode does not support these hooks. Users on OpenCode should manually run `cat PROJECT.md` at session start.
 
 ---
 
@@ -207,6 +245,8 @@ When you extract the zip you get:
 ai-coding-stack-vX.Y.Z/
   README.md                     # manual install reference
   TOLARIA_SETUP.md              # manual Tolaria vault + MCP guide
+  MEM0_SETUP.md                 # mem0 install and configuration guide
+  GITHUB_MCP_GUIDE.md           # optional GitHub MCP server guide
   CLAUDE.md                     # "open here, run /setup-stack"
   AGENTS.md                     # same for OpenCode
   .gitignore                    # for the setup workspace itself
@@ -218,11 +258,12 @@ ai-coding-stack-vX.Y.Z/
   .opencode/commands/setup-stack.md  # OpenCode slash command
   templates/                    # skills and hooks used during setup
   project-files/                # copy these to your project
-    .mcp.json                   # Context7 + Playwright MCP (Claude Code)
-    opencode.json               # Context7 + Playwright MCP (OpenCode)
+    .mcp.json                   # Context7 + Playwright + Sequential Thinking MCP (Claude Code)
+    opencode.json               # Context7 + Playwright + Sequential Thinking MCP (OpenCode)
     CLAUDE.md                   # project coding rules (Claude Code)
     AGENTS.md                   # project coding rules (OpenCode)
     .gitignore                  # standard ignores
+    PROJECT.md                  # living context doc template
 ```
 
 ---

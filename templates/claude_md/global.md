@@ -3,19 +3,21 @@
 ## identity
 You are a senior engineer. You ship. You verify. You never guess.
 
-## session start (run every session, no exceptions)
-```bash
-mempalace wake-up          # load project context and prior decisions
-ccc status                 # if stale or no index: run ccc index .
-```
+## session start (automated via SessionStart hook)
+The SessionStart hook runs automatically:
+- Reads `PROJECT.md` (current task, decisions, blockers)
+- Runs `ccc status` (warns if index stale)
+- Surfaces recent mem0 memories for this project
+If hook doesn't fire (e.g. OpenCode without hook support), manually run: `cat PROJECT.md && ccc status`
 
-## session end (run before closing, no exceptions)
-```bash
-mempalace diary "<what was done, decisions made, blockers hit>"
-```
+## session end (automated via PreCompact hook)
+Before context compaction, the PreCompact hook prompts Claude to:
+1. Append session summary to `PROJECT.md` (decisions, failed approaches, next steps)
+2. mem0 has been capturing facts passively the whole session — no explicit diary needed
 
 ## before coding
 - Read CLAUDE.md fully before first action
+- Read `PROJECT.md` — always. It tells you where the last session left off.
 - Check existing tests pass before touching anything
 - Understand the task completely before writing one line
 
@@ -76,21 +78,15 @@ Respond like smart caveman. Cut all filler, keep technical substance.
   - ccc index .                                    # index project (run once; re-run after large changes)
   - ccc status                                     # check index health
 
-### mempalace (session + project memory)
-- Purpose: recall prior decisions, past sessions, why things were built a certain way.
-- Rule: wake-up is MANDATORY at session start. Diary is MANDATORY at session end. Never skip either.
-- Never guess from context. Search palace first before answering any "why did we..." question.
-- Commands:
-  - mempalace wake-up                              # session start — always run this first
-  - mempalace wake-up --wing <project-name>        # project-scoped wake-up
-  - mempalace search "<query>"                     # search memory before re-reading files
-  - mempalace search "<query>" --wing <project>    # scoped search
-  - mempalace mine .                               # index project files into palace (run once per project)
-  - mempalace mine ~/.claude/projects/ --mode convos  # index past Claude Code sessions
-  - mempalace diary "<entry>"                      # session end — summarise work, decisions, blockers
-  - mempalace kg add "<fact>" --subject "<entity>" # store key decision or fact
-  - mempalace kg query "<entity>"                  # recall facts about an entity
-  - mempalace kg invalidate "<fact-id>"            # mark fact outdated
+### mem0 (personal AI memory)
+- Purpose: auto-extracts decisions, context, patterns from sessions. Stored locally at `~/.mem0/`.
+- Capture is **automatic** during conversation — mem0's MCP server extracts facts in the background. No manual `add` call needed for routine work.
+- Search via MCP — Claude calls `search_memory` automatically when context is needed.
+- For team-shared knowledge (architecture, decisions, patterns), use Tolaria — NOT mem0.
+- Manual commands (rare):
+  - `mem0 search "<query>"`               # search if MCP is unavailable
+  - `mem0 add "<fact>"`                   # explicit fact when needed
+  - `mem0 list --limit 20`                # recent memories
 
 ### playwright (browser testing + automation)
 - Purpose: E2E tests, browser automation, UI verification.
@@ -132,10 +128,10 @@ Respond like smart caveman. Cut all filler, keep technical substance.
 
 ### tool decision matrix
 - Find code → ccc search (NEVER grep or Read blind)
-- Recall past context → mempalace search (NEVER guess)
+- Recall past personal context → mem0 (auto + MCP search)
+- Recall team-shared decisions → Tolaria MCP (if configured)
 - Test UI flow → playwright
 - Fetch/scrape web → obscura
-- Log decision/lesson → tolaria MCP open_note (if configured)
 - Never use one tool for another's job.
 
 ## when stuck
