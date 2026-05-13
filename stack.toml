@@ -23,8 +23,8 @@ git_guardrails  = { source = "github", repo = "mattpocock/skills", path = "skill
 [global_tools]
 cocoindex_code = { source = "uv_tool", package = "cocoindex-code", extras = "full", prereqs = ["python", "uv"],         platforms = ["all"] }
 playwright     = { source = "npm",     package = "@playwright/mcp",                 prereqs = ["node", "pnpm"],         platforms = ["all"] }
-# mem0-mcp: local MCP server backed by Ollama. After install, configure ~/.claude/mcp.json — see MEM0_SETUP.md.
-mem0           = { source = "npm",     package = "mem0-mcp",                        prereqs = ["node", "pnpm", "ollama"], platforms = ["all"] }
+# mem0: MCP server via uv run (mem0ai + LiteLLM + FastEmbed). Needs OPENROUTER_API_KEY. See MEM0_SETUP.md.
+mem0           = { source = "script",  script = "scripts/mem0_server.py",           prereqs = ["python", "uv"],           platforms = ["all"] }
 
 [mcp_servers]
 context7 = { source = "npm", package = "@upstash/context7-mcp", prereqs = ["node", "pnpm"], platforms = ["all"] }

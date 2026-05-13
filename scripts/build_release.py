@@ -295,87 +295,92 @@ def _generate_mem0_setup() -> str:
     return """\
 # mem0 Setup Guide
 
-mem0 is your **personal AI memory** — captures decisions, context, and patterns from
-your sessions. Stored locally as SQLite + Ollama embeddings. Fully offline, no API keys.
+mem0 is your **personal AI memory** — automatically captures decisions, context, and patterns
+from sessions. Uses OpenRouter (via LiteLLM) for smart fact extraction and FastEmbed for
+local CPU-only embeddings. All memories stored locally.
 
 For **team-shared knowledge** (architecture, conventions, postmortems), use Tolaria — not mem0.
 
 ## Prerequisites
 
-- [Ollama](https://ollama.com) installed and running
-- [pnpm](https://pnpm.io) installed (v8+)
+- Python 3.11+ and `uv` installed
+- An [OpenRouter](https://openrouter.ai) API key
 
-## Install
+## Set API Key
 
 ```bash
-# Install mem0-mcp server
-pnpm add -g mem0-mcp
-
-# Pull the embedding model (one-time, ~274 MB)
-ollama pull nomic-embed-text
+export OPENROUTER_API_KEY=<your-key>
 ```
+
+Add to `~/.zshrc` or `~/.bashrc` for persistence.
+
+## How It Works
+
+mem0 runs as an MCP server via `uv run` — no separate install step needed.
+`uv` downloads dependencies (`mem0ai`, `litellm`, `fastembed`, `chromadb`) on first run
+and caches them. First startup takes ~30 seconds; subsequent starts are fast.
+
+- **LLM extraction:** OpenRouter → `claude-haiku-4-5` (cheap, fast)
+- **Embeddings:** FastEmbed `BAAI/bge-small-en-v1.5` (CPU-only ONNX, ~130 MB, local)
+- **Storage:** ChromaDB in `~/.mem0/`
 
 ## Configure Claude Code (Global)
 
-Add mem0 to `~/.claude/mcp.json`. Create the file if it doesn't exist:
+Add mem0 to `~/.claude/mcp.json` (create it if it doesn't exist):
 
 ```json
 {
   "mcpServers": {
     "mem0": {
       "type": "stdio",
-      "command": "node",
-      "args": ["/path/to/mem0-mcp/dist/bin/mem0-mcp.js"],
+      "command": "uv",
+      "args": [
+        "run",
+        "--with", "mem0ai",
+        "--with", "litellm",
+        "--with", "fastembed",
+        "--with", "chromadb",
+        "--with", "mcp[cli]",
+        "/path/to/ai-coding-setup/scripts/mem0_server.py"
+      ],
       "env": {
-        "MEM0_STORE_PATH": "/Users/you/.claude/mem0",
-        "OLLAMA_BASE_URL": "http://127.0.0.1:11434",
-        "MEM0_EMBED_MODEL": "nomic-embed-text"
+        "OPENROUTER_API_KEY": "${OPENROUTER_API_KEY}",
+        "MEM0_STORE_PATH": "~/.mem0",
+        "MEM0_MODEL": "openrouter/anthropic/claude-haiku-4-5",
+        "MEM0_EMBED_MODEL": "BAAI/bge-small-en-v1.5"
       }
     }
   }
 }
 ```
 
-To find the exact path to `mem0-mcp.js`:
-```bash
-which mem0-mcp   # gives the shim — the actual .js is inside the pnpm store
-# Or use:
-node -e "require.resolve('mem0-mcp/dist/bin/mem0-mcp.js')" 2>/dev/null || \
-  ls $(pnpm root -g)/mem0-mcp/dist/bin/mem0-mcp.js
-```
+Replace `/path/to/ai-coding-setup` with the folder where you extracted the stack zip.
 
 After editing, restart Claude Code. Verify with:
 > "Call mem0 health to check if memory is working."
-
-## Native Module Note
-
-On some systems, `better-sqlite3` (used internally) needs a rebuild after install:
-
-```bash
-cd $(pnpm root -g)/mem0-mcp/node_modules/better-sqlite3
-npm rebuild
-```
 
 ## MCP Tools Available
 
 | Tool | Purpose |
 |------|---------|
-| `health` | Check server and Ollama status |
-| `memory_store` | Save a memory with context |
-| `memory_recall` | Recall recent memories |
+| `health` | Check server status |
+| `memory_store` | Save a memory |
+| `memory_recall` | List recent memories |
 | `memory_search` | Search by query |
-| `memory_update` | Update an existing memory |
-| `memory_forget` | Delete a memory |
-| `setup_wizard` | Validate config and pull embedding model |
+| `memory_forget` | Delete a memory by ID |
 
 ## Daily Use — No Commands Needed
 
-Claude uses mem0 automatically during conversation.
-Memories persist in `MEM0_STORE_PATH` as SQLite — survives reboots, works offline.
+Claude uses mem0 automatically during conversation. OpenRouter handles fact extraction;
+FastEmbed handles similarity search locally. No Ollama required.
 
-## Privacy Note
+## Changing the LLM Model
 
-All data stays local. Ollama runs on your machine. No external API calls.
+Set `MEM0_MODEL` to any OpenRouter model:
+```bash
+MEM0_MODEL=openrouter/openai/gpt-4o-mini  # cheaper
+MEM0_MODEL=openrouter/anthropic/claude-sonnet-4-6  # more capable
+```
 """
 
 
@@ -563,6 +568,10 @@ def build_release(version: str, output_dir: Path, repo_root: Path) -> Path:
         shutil.copy2(
             repo_root / "scripts" / "setup_helpers.py",
             staging / "setup_helpers.py",
+        )
+        shutil.copy2(
+            repo_root / "scripts" / "mem0_server.py",
+            staging / "mem0_server.py",
         )
 
         # Prompts

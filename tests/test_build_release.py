@@ -115,6 +115,7 @@ def test_build_release_creates_zip(tmp_path):
     })
     (repo / "scripts").mkdir()
     (repo / "scripts" / "setup_helpers.py").write_text("# helper", encoding="utf-8")
+    (repo / "scripts" / "mem0_server.py").write_text("# mem0", encoding="utf-8")
 
     (repo / "prompts").mkdir()
     (repo / "prompts" / "setup-stack.md").write_text("# playbook", encoding="utf-8")
@@ -149,6 +150,7 @@ def test_build_release_creates_zip(tmp_path):
         names = set(zf.namelist())
     assert "stack.toml" in names
     assert "setup_helpers.py" in names
+    assert "mem0_server.py" in names
     assert "prompts/setup-stack.md" in names
     assert ".claude/commands/setup-stack.md" in names
     assert ".opencode/commands/setup-stack.md" in names
@@ -191,6 +193,7 @@ def test_build_release_writes_sha256(tmp_path):
     write_toml(repo / "stack.toml", {"meta": {"schema_version": "1"}})
     (repo / "scripts").mkdir()
     (repo / "scripts" / "setup_helpers.py").write_text("x", encoding="utf-8")
+    (repo / "scripts" / "mem0_server.py").write_text("x", encoding="utf-8")
     (repo / "prompts").mkdir()
     (repo / "prompts" / "setup-stack.md").write_text("x", encoding="utf-8")
     (repo / "release_assets").mkdir()
@@ -258,6 +261,7 @@ def test_build_release_readme_generated_from_stack(tmp_path):
     })
     (repo / "scripts").mkdir()
     (repo / "scripts" / "setup_helpers.py").write_text("x", encoding="utf-8")
+    (repo / "scripts" / "mem0_server.py").write_text("x", encoding="utf-8")
     (repo / "prompts").mkdir()
     (repo / "prompts" / "setup-stack.md").write_text("x", encoding="utf-8")
     (repo / "release_assets").mkdir()

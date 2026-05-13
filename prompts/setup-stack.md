@@ -58,21 +58,16 @@ Run an AI-guided installation of the curated AI coding stack.
    claude plugin install claude-hud@claude-hud
    ```
 
-   **mem0** (npm + requires MCP config in ~/.claude/mcp.json):
+   **mem0** (Python script, no separate install — `uv run` handles deps):
    ```bash
-   # 1. Install package
-   pnpm add -g mem0-mcp
+   # 1. Set OpenRouter API key (add to ~/.zshrc for persistence)
+   export OPENROUTER_API_KEY=<your-key>
 
-   # 2. Rebuild native module (required on some systems)
-   # Find path: ls $(pnpm root -g)/mem0-mcp/node_modules/better-sqlite3/
-   cd $(pnpm root -g)/mem0-mcp/node_modules/better-sqlite3 && npm rebuild
-
-   # 3. Pull embedding model (one-time, ~274 MB)
-   ollama pull nomic-embed-text
-
-   # 4. Add to ~/.claude/mcp.json under mcpServers (global, not per-project):
-   #    See MEM0_SETUP.md for the full JSON config block.
+   # 2. Add to ~/.claude/mcp.json under mcpServers (global, not per-project):
+   #    See MEM0_SETUP.md for the exact JSON config block.
+   #    The script path is: <this-folder>/mem0_server.py
    ```
+   First startup downloads deps via `uv` (~30 s). No Ollama needed.
 
    **GitHub skills** — install for both Claude Code and OpenCode in one step:
    ```bash
