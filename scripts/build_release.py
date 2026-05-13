@@ -295,87 +295,87 @@ def _generate_mem0_setup() -> str:
     return """\
 # mem0 Setup Guide
 
-mem0 is your **personal AI memory** — automatically extracts decisions, context,
-and patterns from your sessions. Stored locally at `~/.mem0/`. Works offline.
+mem0 is your **personal AI memory** — captures decisions, context, and patterns from
+your sessions. Stored locally as SQLite + Ollama embeddings. Fully offline, no API keys.
 
 For **team-shared knowledge** (architecture, conventions, postmortems), use Tolaria — not mem0.
+
+## Prerequisites
+
+- [Ollama](https://ollama.com) installed and running
+- [pnpm](https://pnpm.io) installed (v8+)
 
 ## Install
 
 ```bash
-uv tool install mem0ai
+# Install mem0-mcp server
+pnpm add -g mem0-mcp
+
+# Pull the embedding model (one-time, ~274 MB)
+ollama pull nomic-embed-text
 ```
 
-Verify:
-```bash
-mem0 --version
-```
+## Configure Claude Code (Global)
 
-## Configure LLM Provider
-
-mem0 uses an LLM to extract facts from your conversations. Set your OpenRouter key:
-
-```bash
-export OPENROUTER_API_KEY=<your-org-provided-key>
-```
-
-Add to `~/.zshrc` or `~/.bashrc` for persistence.
-
-mem0 will use OpenRouter via LiteLLM. Default model: `openrouter/anthropic/claude-3.5-haiku`
-(cheap, fast extraction). Override via `MEM0_MODEL` env var if needed.
-
-## Vector Store: Local ChromaDB (Default)
-
-mem0 ships with ChromaDB embedded — no separate service to run.
-Memories persist in `~/.mem0/chroma/`. Survives reboots. Works offline.
-
-## Add mem0 MCP to Your Project
-
-Edit your project's `.mcp.json` (Claude Code) or `opencode.json` (OpenCode):
+Add mem0 to `~/.claude/mcp.json`. Create the file if it doesn't exist:
 
 ```json
 {
   "mcpServers": {
     "mem0": {
       "type": "stdio",
-      "command": "uv",
-      "args": ["tool", "run", "mem0-mcp"]
+      "command": "node",
+      "args": ["/path/to/mem0-mcp/dist/bin/mem0-mcp.js"],
+      "env": {
+        "MEM0_STORE_PATH": "/Users/you/.claude/mem0",
+        "OLLAMA_BASE_URL": "http://127.0.0.1:11434",
+        "MEM0_EMBED_MODEL": "nomic-embed-text"
+      }
     }
   }
 }
 ```
 
-After adding, restart Claude Code / OpenCode. Verify with:
+To find the exact path to `mem0-mcp.js`:
+```bash
+which mem0-mcp   # gives the shim — the actual .js is inside the pnpm store
+# Or use:
+node -e "require.resolve('mem0-mcp/dist/bin/mem0-mcp.js')" 2>/dev/null || \
+  ls $(pnpm root -g)/mem0-mcp/dist/bin/mem0-mcp.js
+```
 
-> "Search my mem0 memory for anything."
+After editing, restart Claude Code. Verify with:
+> "Call mem0 health to check if memory is working."
+
+## Native Module Note
+
+On some systems, `better-sqlite3` (used internally) needs a rebuild after install:
+
+```bash
+cd $(pnpm root -g)/mem0-mcp/node_modules/better-sqlite3
+npm rebuild
+```
+
+## MCP Tools Available
+
+| Tool | Purpose |
+|------|---------|
+| `health` | Check server and Ollama status |
+| `memory_store` | Save a memory with context |
+| `memory_recall` | Recall recent memories |
+| `memory_search` | Search by query |
+| `memory_update` | Update an existing memory |
+| `memory_forget` | Delete a memory |
+| `setup_wizard` | Validate config and pull embedding model |
 
 ## Daily Use — No Commands Needed
 
-mem0 captures facts **automatically** during conversation via its MCP server.
-Claude searches mem0 automatically when relevant context is needed.
-
-Manual commands (rare):
-```bash
-mem0 search "<query>"      # search if MCP isn't loaded
-mem0 add "<fact>"          # add a specific fact manually
-mem0 list --limit 20       # recent memories
-```
-
-## If You Outgrow Local (Team Deployment)
-
-For teams that want shared memory across developers (rare — Tolaria usually fits better):
-
-1. Deploy Qdrant via Docker on a team server (`docker run -p 6333:6333 qdrant/qdrant`)
-2. Each dev sets `MEM0_VECTOR_STORE=qdrant` and `MEM0_QDRANT_HOST=https://team.internal:6333`
-3. Namespace via `user_id` (personal vs `org-shared`)
-
-For most teams, **local-only is the right answer.** Personal memory shouldn't be shared.
+Claude uses mem0 automatically during conversation.
+Memories persist in `MEM0_STORE_PATH` as SQLite — survives reboots, works offline.
 
 ## Privacy Note
 
-Fact extraction calls OpenRouter (an external API) with snippets of your conversation.
-Don't use mem0 in sessions that handle real production credentials or sensitive data
-unless your org has approved OpenRouter for that use.
+All data stays local. Ollama runs on your machine. No external API calls.
 """
 
 
@@ -476,6 +476,23 @@ def _build_project_files(staging: Path, repo_root: Path) -> None:
     project_md_src = repo_root / "templates" / "project_md" / "PROJECT.md"
     if project_md_src.exists():
         shutil.copy2(project_md_src, pf / "PROJECT.md")
+
+    # .claude/hooks/ — session-start and pre-compact run per-project via $CLAUDE_PROJECT_DIR
+    hooks_src = repo_root / "templates" / "hooks"
+    if hooks_src.exists():
+        hooks_dst = pf / ".claude" / "hooks"
+        hooks_dst.mkdir(parents=True)
+        for hook in ("session-start.sh", "pre-compact.sh"):
+            src = hooks_src / hook
+            if src.exists():
+                dst = hooks_dst / hook
+                shutil.copy2(src, dst)
+                dst.chmod(dst.stat().st_mode | 0o755)
+
+    # .opencode/commands/ — placeholder for project-level OpenCode commands
+    opencode_cmds = pf / ".opencode" / "commands"
+    opencode_cmds.mkdir(parents=True)
+    (opencode_cmds / ".gitkeep").write_text("", encoding="utf-8")
 
 
 def _rotate_releases(output_dir: Path, keep: int = 5) -> None:

@@ -130,6 +130,10 @@ def test_build_release_creates_zip(tmp_path):
     (repo / "templates" / "project_md").mkdir(parents=True)
     (repo / "templates" / "project_md" / "PROJECT.md").write_text("# Project State", encoding="utf-8")
 
+    (repo / "templates" / "hooks").mkdir(parents=True)
+    (repo / "templates" / "hooks" / "session-start.sh").write_text("#!/bin/bash\necho start", encoding="utf-8")
+    (repo / "templates" / "hooks" / "pre-compact.sh").write_text("#!/bin/bash\necho compact", encoding="utf-8")
+
     output = tmp_path / "dist"
     output.mkdir()
 
@@ -158,6 +162,9 @@ def test_build_release_creates_zip(tmp_path):
     assert "project-files/CLAUDE.md" in names
     assert "project-files/AGENTS.md" in names
     assert "project-files/.gitignore" in names
+    assert "project-files/.claude/hooks/session-start.sh" in names
+    assert "project-files/.claude/hooks/pre-compact.sh" in names
+    assert "project-files/.opencode/commands/.gitkeep" in names
     # tolaria_vault no longer bundled
     assert not any(n.startswith("tolaria_vault/") for n in names)
 

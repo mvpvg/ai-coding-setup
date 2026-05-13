@@ -16,7 +16,7 @@ Tolaria stays as the team-shared knowledge vault (still manual).
 ## Repo Layout
 
 ```
-/Users/ven/Downloads/Code-AI-Develpoment/projects/ai-coding-setup/
+~/projects/ai-coding-setup/
 ```
 
 Branch: `main`. Test command: `uv run pytest --tb=short -q`. Build: `uv run python -m scripts.build_release --version <ver> --output dist/`
@@ -805,6 +805,6 @@ gh release create v0.4.0 \
 1. **Don't ask the user to clarify anything in this plan** — it's been pre-discussed. Just execute.
 2. **One big commit is fine** since the phases are interdependent.
 3. **If a test fails after a change**, fix it before moving on. Don't pile up failures.
-4. **Skills should have tight `when_to_use`** descriptions to avoid false triggers. If you're tempted to write "useful for X", rewrite as "use when X". The Skill tool docs are at `/Users/ven/.claude/plugins/cache/superpowers-marketplace/superpowers/5.0.7/skills/` for reference patterns.
+4. **Skills should have tight `when_to_use`** descriptions to avoid false triggers. If you're tempted to write "useful for X", rewrite as "use when X". The Skill tool docs are at `~/.claude/plugins/cache/superpowers-marketplace/superpowers/5.0.7/skills/` for reference patterns.
 5. **The hooks use `${CLAUDE_PROJECT_DIR}`** — this is set by Claude Code. Don't hardcode paths.
 6. **mem0 MCP server name is `mem0-mcp`** — install via `uv tool install mem0-mcp` (separate from `mem0ai`). Verify the package name before committing the MCP config.
