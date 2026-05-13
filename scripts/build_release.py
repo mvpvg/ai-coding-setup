@@ -304,29 +304,48 @@ For **team-shared knowledge** (architecture, conventions, postmortems), use Tola
 ## Prerequisites
 
 - Python 3.11+ and `uv` installed
-- An [OpenRouter](https://openrouter.ai) API key
+- An [OpenRouter](https://openrouter.ai) API key (free tier available)
 
-## Set API Key
+## Step 1: Get an OpenRouter API Key
+
+1. Sign up at [openrouter.ai](https://openrouter.ai)
+2. Go to **Keys** → **Create Key**
+3. Copy the key (starts with `sk-or-...`)
+
+## Step 2: Set the API Key
+
+### macOS / Linux
 
 ```bash
-export OPENROUTER_API_KEY=<your-key>
+export OPENROUTER_API_KEY=sk-or-your-key-here
 ```
 
-Add to `~/.zshrc` or `~/.bashrc` for persistence.
+Add to `~/.zshrc` (Zsh) or `~/.bashrc` (Bash) for persistence:
 
-## How It Works
+```bash
+echo 'export OPENROUTER_API_KEY=sk-or-your-key-here' >> ~/.zshrc
+source ~/.zshrc
+```
 
-mem0 runs as an MCP server via `uv run` — no separate install step needed.
-`uv` downloads dependencies (`mem0ai`, `litellm`, `fastembed`, `chromadb`) on first run
-and caches them. First startup takes ~30 seconds; subsequent starts are fast.
+### Windows (PowerShell)
 
-- **LLM extraction:** OpenRouter → `claude-haiku-4-5` (cheap, fast)
-- **Embeddings:** FastEmbed `BAAI/bge-small-en-v1.5` (CPU-only ONNX, ~130 MB, local)
-- **Storage:** ChromaDB in `~/.mem0/`
+Temporary (current session only):
 
-## Configure Claude Code (Global)
+```powershell
+$env:OPENROUTER_API_KEY = "sk-or-your-key-here"
+```
 
-Add mem0 to `~/.claude/mcp.json` (create it if it doesn't exist):
+Permanent (user-level):
+
+```powershell
+[Environment]::SetEnvironmentVariable("OPENROUTER_API_KEY", "sk-or-your-key-here", "User")
+```
+
+Or via GUI: **Settings → System → Advanced system settings → Environment Variables → User variables → New**.
+
+## Step 3: Configure Claude Code (Global)
+
+Add mem0 to `~/.claude/mcp.json` (create the file if it doesn't exist):
 
 ```json
 {
@@ -341,12 +360,12 @@ Add mem0 to `~/.claude/mcp.json` (create it if it doesn't exist):
         "--with", "fastembed",
         "--with", "chromadb",
         "--with", "mcp[cli]",
-        "/path/to/ai-coding-setup/scripts/mem0_server.py"
+        "/path/to/ai-coding-setup/mem0_server.py"
       ],
       "env": {
         "OPENROUTER_API_KEY": "${OPENROUTER_API_KEY}",
         "MEM0_STORE_PATH": "~/.mem0",
-        "MEM0_MODEL": "openrouter/anthropic/claude-haiku-4-5",
+        "MEM0_MODEL": "openai/gpt-5.4-nano",
         "MEM0_EMBED_MODEL": "BAAI/bge-small-en-v1.5"
       }
     }
@@ -358,6 +377,26 @@ Replace `/path/to/ai-coding-setup` with the folder where you extracted the stack
 
 After editing, restart Claude Code. Verify with:
 > "Call mem0 health to check if memory is working."
+
+## How It Works
+
+mem0 runs as an MCP server via `uv run` — no separate install step needed.
+`uv` downloads dependencies on first run and caches them. First startup ~30 s; subsequent starts fast.
+
+- **LLM extraction:** OpenRouter → `gpt-5.4-nano` (cheap, fast — see model table below)
+- **Embeddings:** FastEmbed `BAAI/bge-small-en-v1.5` (CPU-only ONNX, ~130 MB, fully local)
+- **Storage:** ChromaDB at `~/.mem0/` (local, no cloud sync)
+
+## Recommended Models
+
+| Model ID | Cost (input/output per 1M tokens) | Best for |
+|----------|----------------------------------|----------|
+| `openai/gpt-5.4-nano` | $0.20 / $1.25 | **Default** — cheapest, fast enough for fact extraction |
+| `openai/gpt-5.4-mini` | $0.75 / $4.50 | Balanced — better reasoning, still affordable |
+| `google/gemini-3.1-flash-lite` | $0.25 / $1.50 | Google alternative, similar price |
+| `anthropic/claude-haiku-latest` | $1.00 / $5.00 | Best extraction quality, Anthropic option |
+
+To change, set `MEM0_MODEL` in the `env` block of `~/.claude/mcp.json`.
 
 ## MCP Tools Available
 
@@ -372,15 +411,7 @@ After editing, restart Claude Code. Verify with:
 ## Daily Use — No Commands Needed
 
 Claude uses mem0 automatically during conversation. OpenRouter handles fact extraction;
-FastEmbed handles similarity search locally. No Ollama required.
-
-## Changing the LLM Model
-
-Set `MEM0_MODEL` to any OpenRouter model:
-```bash
-MEM0_MODEL=openrouter/openai/gpt-4o-mini  # cheaper
-MEM0_MODEL=openrouter/anthropic/claude-sonnet-4-6  # more capable
-```
+FastEmbed handles similarity search locally. No Ollama or GPU required.
 """
 
 

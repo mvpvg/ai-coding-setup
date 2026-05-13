@@ -100,27 +100,32 @@ The agent checks prerequisites, installs tools, writes your global `CLAUDE.md`, 
 
 **Prerequisites** (checked automatically):
 
-| Tool | Install |
-|------|---------|
-| Python 3.11+ | `brew install python` / [python.org](https://www.python.org/downloads/) |
-| uv | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| Node.js | `brew install node` / [nodejs.org](https://nodejs.org/) |
-| pnpm | `npm install -g pnpm` |
-| git | `brew install git` / `apt install git` |
-| Claude Code CLI | `npm install -g @anthropic-ai/claude-code` |
+| Tool | macOS / Linux | Windows |
+|------|--------------|---------|
+| Python 3.11+ | `brew install python` / [python.org](https://www.python.org/downloads/) | [python.org](https://www.python.org/downloads/) |
+| uv | `curl -LsSf https://astral.sh/uv/install.sh \| sh` | `powershell -c "irm https://astral.sh/uv/install.ps1 \| iex"` |
+| Node.js | `brew install node` / [nodejs.org](https://nodejs.org/) | [nodejs.org](https://nodejs.org/) |
+| pnpm | `npm install -g pnpm` | `npm install -g pnpm` |
+| git | `brew install git` / `apt install git` | [git-scm.com](https://git-scm.com/downloads) |
+| Claude Code CLI | `npm install -g @anthropic-ai/claude-code` | `npm install -g @anthropic-ai/claude-code` |
+| OpenCode (alt) | `npm install -g opencode-ai` | `npm install -g opencode-ai` |
+| OpenRouter key | [openrouter.ai](https://openrouter.ai) → Keys → Create Key | (required for mem0) |
 
 ### 4. Copy project files
 
 Copy `project-files/` to each project you work in:
 
-| File | Editor |
-|------|--------|
-| `.mcp.json` | Claude Code |
-| `opencode.json` | OpenCode |
-| `CLAUDE.md` | Claude Code |
-| `AGENTS.md` | OpenCode |
-| `.gitignore` | Both |
-| `PROJECT.md` | Both |
+| File / Folder | Editor | What it does |
+|--------------|--------|-------------|
+| `.mcp.json` | Claude Code | Pre-wired MCP servers (Context7, Playwright, Sequential Thinking) |
+| `opencode.json` | OpenCode | Same MCP servers in OpenCode format |
+| `CLAUDE.md` | Claude Code | Project coding rules (auto-read by Claude Code) |
+| `AGENTS.md` | OpenCode | Project coding rules (auto-read by OpenCode) |
+| `.gitignore` | Both | Ignores common AI editor files |
+| `PROJECT.md` | Both | Living context doc starter |
+| `.claude/commands/` | Claude Code | Bundled skills as `/slash-commands` |
+| `.opencode/commands/` | OpenCode | Same skills in OpenCode format |
+| `.claude/hooks/` | Claude Code | SessionStart + PreCompact hooks |
 
 The `~/ai-setup` folder is **permanent** — reuse it for every new project.
 
@@ -268,7 +273,10 @@ ai-coding-stack-vX.Y.Z/
     ├── opencode.json
     ├── CLAUDE.md / AGENTS.md      # project coding rules
     ├── .gitignore
-    └── PROJECT.md                 # living context doc starter
+    ├── PROJECT.md                 # living context doc starter
+    ├── .claude/commands/          # bundled skills as slash commands (Claude Code)
+    ├── .opencode/commands/        # same skills for OpenCode
+    └── .claude/hooks/             # SessionStart + PreCompact hooks
 ```
 
 ---

@@ -32,7 +32,7 @@ def _build_memory() -> Memory:
         "llm": {
             "provider": "litellm",
             "config": {
-                "model": os.environ.get("MEM0_MODEL", "openrouter/anthropic/claude-haiku-4-5"),
+                "model": os.environ.get("MEM0_MODEL", "openai/gpt-5.4-nano"),
                 "api_key": api_key,
                 "api_base": _OPENROUTER_BASE,
             },
