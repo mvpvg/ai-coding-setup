@@ -15,14 +15,16 @@ default_caveman_level = "full"
 [base_tools]
 superpowers     = { source = "marketplace", id = "superpowers@claude-plugins-official",     prereqs = ["claude-cli"], platforms = ["claude-code"] }
 frontend_design = { source = "marketplace", id = "frontend-design@claude-plugins-official", prereqs = ["claude-cli"], platforms = ["claude-code"] }
+claude_hud      = { source = "marketplace", id = "claude-hud@claude-hud", marketplace_repo = "jarrodwatts/claude-hud", prereqs = ["claude-cli"], platforms = ["claude-code"] }
 grill_with_docs = { source = "github", repo = "mattpocock/skills", path = "skills/engineering/grill-with-docs",        prereqs = ["git"],        platforms = ["all"] }
 diagnose        = { source = "github", repo = "mattpocock/skills", path = "skills/engineering/diagnose",               prereqs = ["git"],        platforms = ["all"] }
 git_guardrails  = { source = "github", repo = "mattpocock/skills", path = "skills/misc/git-guardrails-claude-code",    prereqs = ["git"],        platforms = ["all"] }
 
 [global_tools]
-cocoindex_code = { source = "uv_tool", package = "cocoindex-code", extras = "full", prereqs = ["python", "uv"], platforms = ["all"] }
-playwright     = { source = "npm",     package = "@playwright/mcp",                 prereqs = ["node", "pnpm"], platforms = ["all"] }
-mem0           = { source = "uv_tool", package = "mem0ai",                          prereqs = ["python", "uv"], platforms = ["all"] }
+cocoindex_code = { source = "uv_tool", package = "cocoindex-code", extras = "full", prereqs = ["python", "uv"],         platforms = ["all"] }
+playwright     = { source = "npm",     package = "@playwright/mcp",                 prereqs = ["node", "pnpm"],         platforms = ["all"] }
+# mem0-mcp: local MCP server backed by Ollama. After install, configure ~/.claude/mcp.json — see MEM0_SETUP.md.
+mem0           = { source = "npm",     package = "mem0-mcp",                        prereqs = ["node", "pnpm", "ollama"], platforms = ["all"] }
 
 [mcp_servers]
 context7 = { source = "npm", package = "@upstash/context7-mcp", prereqs = ["node", "pnpm"], platforms = ["all"] }

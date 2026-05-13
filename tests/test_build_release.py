@@ -134,6 +134,10 @@ def test_build_release_creates_zip(tmp_path):
     (repo / "templates" / "hooks" / "session-start.sh").write_text("#!/bin/bash\necho start", encoding="utf-8")
     (repo / "templates" / "hooks" / "pre-compact.sh").write_text("#!/bin/bash\necho compact", encoding="utf-8")
 
+    for skill in ("brainstorm", "tdd", "plan"):
+        (repo / "templates" / "skills" / skill).mkdir(parents=True)
+        (repo / "templates" / "skills" / skill / "SKILL.md").write_text(f"# {skill}", encoding="utf-8")
+
     output = tmp_path / "dist"
     output.mkdir()
 
@@ -164,7 +168,11 @@ def test_build_release_creates_zip(tmp_path):
     assert "project-files/.gitignore" in names
     assert "project-files/.claude/hooks/session-start.sh" in names
     assert "project-files/.claude/hooks/pre-compact.sh" in names
-    assert "project-files/.opencode/commands/.gitkeep" in names
+    # skills copied as slash commands for both editors
+    assert "project-files/.claude/commands/brainstorm.md" in names
+    assert "project-files/.opencode/commands/brainstorm.md" in names
+    assert "project-files/.claude/commands/tdd.md" in names
+    assert "project-files/.opencode/commands/tdd.md" in names
     # tolaria_vault no longer bundled
     assert not any(n.startswith("tolaria_vault/") for n in names)
 

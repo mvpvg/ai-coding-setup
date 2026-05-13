@@ -40,11 +40,39 @@ Run an AI-guided installation of the curated AI coding stack.
 
    | Source | Command |
    |--------|---------|
-   | `marketplace` | `claude plugin marketplace update <marketplace>` then `claude plugin install <id>` |
+   | `marketplace` (official) | `claude plugin marketplace update <marketplace>` then `claude plugin install <id>` |
+   | `marketplace` (custom — has `marketplace_repo`) | Register marketplace first — see below |
    | `npm` | `pnpm add -g <package>` |
    | `uv_tool` | `uv tool install "<package>[extras]"` or `uv tool install <package>` |
    | `github` (skill) | Clone repo then install SKILL.md — see below |
    | `desktop` | Show `note` field as manual instruction |
+
+   **Custom marketplace plugins** (tools with `marketplace_repo` field like `claude_hud`):
+   ```bash
+   # 1. Register the marketplace in ~/.claude/settings.json under extraKnownMarketplaces:
+   #    "claude-hud": { "source": { "source": "github", "repo": "jarrodwatts/claude-hud" } }
+   # Edit settings.json directly — add the entry if not already present.
+
+   # 2. Update and install
+   claude plugin marketplace update claude-hud
+   claude plugin install claude-hud@claude-hud
+   ```
+
+   **mem0** (npm + requires MCP config in ~/.claude/mcp.json):
+   ```bash
+   # 1. Install package
+   pnpm add -g mem0-mcp
+
+   # 2. Rebuild native module (required on some systems)
+   # Find path: ls $(pnpm root -g)/mem0-mcp/node_modules/better-sqlite3/
+   cd $(pnpm root -g)/mem0-mcp/node_modules/better-sqlite3 && npm rebuild
+
+   # 3. Pull embedding model (one-time, ~274 MB)
+   ollama pull nomic-embed-text
+
+   # 4. Add to ~/.claude/mcp.json under mcpServers (global, not per-project):
+   #    See MEM0_SETUP.md for the full JSON config block.
+   ```
 
    **GitHub skills** — install for both Claude Code and OpenCode in one step:
    ```bash
@@ -136,7 +164,8 @@ Run an AI-guided installation of the curated AI coding stack.
    │ Tool                │ Status │ Notes                              │
    ├─────────────────────┼────────┼────────────────────────────────────┤
    │ cocoindex-code      │ ✅     │ installed                          │
-   │ mem0                │ ✅     │ installed                          │
+   │ mem0 (mem0-mcp)     │ ✅     │ installed + ~/.claude/mcp.json     │
+   │ claude-hud          │ ✅     │ Claude Code only                   │
    │ context7 MCP        │ ✅     │ written to project-files/          │
    │ playwright MCP      │ ✅     │ written to project-files/          │
    │ global CLAUDE.md    │ ✅     │ ~/.claude/CLAUDE.md written        │
@@ -147,7 +176,7 @@ Run an AI-guided installation of the curated AI coding stack.
    Then tell the user:
    > "Setup complete. Copy files from `project-files/` to each project you work in:
    >
-   > **Claude Code projects:** `.mcp.json`, `CLAUDE.md`, `.gitignore`
+   > **Claude Code projects:** `.mcp.json`, `CLAUDE.md`, `.gitignore`, `.claude/`
    >
    > **OpenCode projects:** `opencode.json`, `AGENTS.md`, `.gitignore`
    >

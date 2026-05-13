@@ -328,3 +328,10 @@ def test_stack_does_not_install_mempalace():
     }
     assert "mempalace" not in all_tools
     assert "mem0" in stack.get("global_tools", {})
+    # mem0 must use npm/mem0-mcp, not uv_tool/mem0ai (mem0ai has no CLI)
+    mem0_cfg = stack["global_tools"]["mem0"]
+    assert mem0_cfg["source"] == "npm"
+    assert mem0_cfg["package"] == "mem0-mcp"
+    # claude-hud is Claude Code only
+    assert "claude_hud" in stack.get("base_tools", {})
+    assert stack["base_tools"]["claude_hud"]["platforms"] == ["claude-code"]

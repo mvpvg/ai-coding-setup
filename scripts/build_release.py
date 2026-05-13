@@ -489,10 +489,22 @@ def _build_project_files(staging: Path, repo_root: Path) -> None:
                 shutil.copy2(src, dst)
                 dst.chmod(dst.stat().st_mode | 0o755)
 
-    # .opencode/commands/ — placeholder for project-level OpenCode commands
-    opencode_cmds = pf / ".opencode" / "commands"
-    opencode_cmds.mkdir(parents=True)
-    (opencode_cmds / ".gitkeep").write_text("", encoding="utf-8")
+    # Skill MD files as slash commands for both editors
+    # Claude Code: .claude/commands/<name>.md → /name
+    # OpenCode:    .opencode/commands/<name>.md → /name
+    skills_src = repo_root / "templates" / "skills"
+    if skills_src.exists():
+        claude_cmds = pf / ".claude" / "commands"
+        claude_cmds.mkdir(parents=True, exist_ok=True)
+        opencode_cmds = pf / ".opencode" / "commands"
+        opencode_cmds.mkdir(parents=True, exist_ok=True)
+        for skill_dir in sorted(skills_src.iterdir()):
+            if skill_dir.is_dir():
+                skill_md = skill_dir / "SKILL.md"
+                if skill_md.exists():
+                    cmd_name = skill_dir.name + ".md"
+                    shutil.copy2(skill_md, claude_cmds / cmd_name)
+                    shutil.copy2(skill_md, opencode_cmds / cmd_name)
 
 
 def _rotate_releases(output_dir: Path, keep: int = 5) -> None:

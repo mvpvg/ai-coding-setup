@@ -27,6 +27,7 @@ _PREREQ_COMMANDS: dict[str, list[str]] = {
     "git": ["git", "--version"],
     "claude-cli": ["claude", "--version"],
     "opencode-cli": ["opencode", "--version"],
+    "ollama": ["ollama", "--version"],
     "pnpm": ["pnpm", "--version"],
     "npm": ["npm", "--version"],
     "yarn": ["yarn", "--version"],
