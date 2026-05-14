@@ -25,6 +25,9 @@ _archive/
 research_results.json
 validation_log.json
 
+# AI session state (remove this line if you want to track project state across the team)
+PROJECT.md
+
 # OS
 .DS_Store
 Thumbs.db

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from scripts.lib.config import read_toml
+from scripts.lib.sanitize_check import check_tree
 
 
 _PROJECT_MCP_JSON: dict[str, Any] = {
@@ -17,17 +18,17 @@ _PROJECT_MCP_JSON: dict[str, Any] = {
         "context7": {
             "type": "stdio",
             "command": "pnpm",
-            "args": ["exec", "@upstash/context7-mcp"],
+            "args": ["exec", "@upstash/context7-mcp@2.2.5"],
         },
         "playwright": {
             "type": "stdio",
             "command": "pnpm",
-            "args": ["exec", "@playwright/mcp@latest"],
+            "args": ["exec", "@playwright/mcp@0.0.75"],
         },
         "sequential-thinking": {
             "type": "stdio",
             "command": "pnpm",
-            "args": ["dlx", "-y", "@modelcontextprotocol/server-sequential-thinking"],
+            "args": ["exec", "@modelcontextprotocol/server-sequential-thinking@2025.12.18"],
         },
     }
 }
@@ -37,17 +38,17 @@ _PROJECT_OPENCODE_JSON: dict[str, Any] = {
         "context7": {
             "type": "local",
             "command": "pnpm",
-            "args": ["exec", "@upstash/context7-mcp"],
+            "args": ["exec", "@upstash/context7-mcp@2.2.5"],
         },
         "playwright": {
             "type": "local",
             "command": "pnpm",
-            "args": ["exec", "@playwright/mcp@latest"],
+            "args": ["exec", "@playwright/mcp@0.0.75"],
         },
         "sequential-thinking": {
             "type": "local",
             "command": "pnpm",
-            "args": ["dlx", "-y", "@modelcontextprotocol/server-sequential-thinking"],
+            "args": ["exec", "@modelcontextprotocol/server-sequential-thinking@2025.12.18"],
         },
     }
 }
@@ -654,6 +655,12 @@ def build_release(version: str, output_dir: Path, repo_root: Path) -> Path:
             "# setup_helpers.py is stdlib-only — no install required.\n",
             encoding="utf-8",
         )
+
+        # Refuse to publish if secrets or PII are found
+        hits = check_tree(staging)
+        if hits:
+            lines = [f"  {p.relative_to(staging)}:{ln}  [{pat}]  {val!r}" for p, ln, pat, val in hits]
+            raise ValueError("Pre-publish check failed — refusing to zip:\n" + "\n".join(lines))
 
         # Build zip
         zip_path = output_dir / f"ai-coding-stack-v{version}.zip"

@@ -8,6 +8,7 @@ import pytest
 
 from scripts.build_release import _install_command, render_readme, build_release
 from scripts.lib.config import write_toml
+from scripts.lib.sanitize_check import check_file, check_tree
 
 
 def test_install_command_marketplace():
@@ -277,3 +278,58 @@ def test_build_release_readme_generated_from_stack(tmp_path):
         readme = zf.read("README.md").decode("utf-8")
     assert "ruff" in readme
     assert "python" in readme
+
+
+# --- sanitize_check tests ---
+
+def test_sanitize_check_detects_openrouter_key(tmp_path):
+    f = tmp_path / "config.md"
+    f.write_text("OPENROUTER_API_KEY=sk-or-v1-abc123def456ghi789jkl012mno345\n")
+    hits = check_file(f)
+    assert any("OpenRouter" in name for _, name, _ in hits)
+
+
+def test_sanitize_check_detects_home_path(tmp_path):
+    f = tmp_path / "readme.md"
+    f.write_text("path: /Users/johndoe/projects/myapp\n")
+    hits = check_file(f)
+    assert any("macOS home" in name for _, name, _ in hits)
+
+
+def test_sanitize_check_allows_placeholder_key(tmp_path):
+    f = tmp_path / "setup.md"
+    f.write_text("export OPENROUTER_API_KEY=sk-or-your-key-here\n")
+    hits = check_file(f)
+    assert not hits
+
+
+def test_sanitize_check_allows_noreply_email(tmp_path):
+    f = tmp_path / "notes.md"
+    f.write_text("contact: noreply@anthropic.com\n")
+    hits = check_file(f)
+    assert not hits
+
+
+def test_build_release_fails_on_secret_in_template(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    write_toml(repo / "stack.toml", {"meta": {"schema_version": "1"}})
+    (repo / "scripts").mkdir()
+    (repo / "scripts" / "setup_helpers.py").write_text("x", encoding="utf-8")
+    (repo / "scripts" / "mem0_server.py").write_text("x", encoding="utf-8")
+    (repo / "prompts").mkdir()
+    (repo / "prompts" / "setup-stack.md").write_text("x", encoding="utf-8")
+    (repo / "release_assets").mkdir()
+    (repo / "release_assets" / "CLAUDE.md").write_text("x", encoding="utf-8")
+    (repo / "release_assets" / "AGENTS.md").write_text("x", encoding="utf-8")
+    # Inject a fake secret into a template
+    templates = repo / "templates"
+    templates.mkdir()
+    leaked = templates / "leaked.md"
+    leaked.write_text("sk-or-v1-realkey12345678901234567890abc\n")
+
+    output = tmp_path / "dist"
+    output.mkdir()
+
+    with pytest.raises(ValueError, match="Pre-publish check failed"):
+        build_release("0.1.0", output, repo)
