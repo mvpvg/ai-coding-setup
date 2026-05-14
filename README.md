@@ -2,8 +2,8 @@
 
 > Opinionated AI coding setup for **Claude Code** and **OpenCode** — skills, memory, MCP servers, and coding rules wired together so every session starts with full context and every agent follows the same workflow.
 
-[![Tests](https://img.shields.io/badge/tests-53%20passing-brightgreen)](#running-tests)
-[![Version](https://img.shields.io/badge/version-0.4.0-blue)](../../releases)
+[![Tests](https://img.shields.io/badge/tests-80%20passing-brightgreen)](#running-tests)
+[![Version](https://img.shields.io/badge/version-0.6.0-blue)](../../releases)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](#)
 
 ---
@@ -117,11 +117,11 @@ Copy `project-files/` to each project you work in:
 
 | File / Folder | Editor | What it does |
 |--------------|--------|-------------|
-| `.mcp.json` | Claude Code | Pre-wired MCP servers (Context7, Playwright, Sequential Thinking) |
-| `opencode.json` | OpenCode | Same MCP servers in OpenCode format |
+| `.mcp.json` | Claude Code | Pre-wired MCP servers (Context7, Playwright, Sequential Thinking) — versions pinned |
+| `opencode.json` | OpenCode | Same MCP servers in OpenCode format — versions pinned |
 | `CLAUDE.md` | Claude Code | Project coding rules (auto-read by Claude Code) |
 | `AGENTS.md` | OpenCode | Project coding rules (auto-read by OpenCode) |
-| `.gitignore` | Both | Ignores common AI editor files |
+| `.gitignore` | Both | Ignores common AI editor files; `PROJECT.md` excluded by default (opt-in to track) |
 | `PROJECT.md` | Both | Living context doc starter |
 | `.claude/commands/` | Claude Code | Bundled skills as `/slash-commands` |
 | `.opencode/commands/` | OpenCode | Same skills in OpenCode format |
@@ -155,9 +155,8 @@ Installed to `.claude/hooks/` — run automatically, no commands needed.
 
 | Hook | When it fires | What it does |
 |------|--------------|-------------|
-| **SessionStart** | Session begins | Displays `PROJECT.md`, `ccc status`, recent mem0 memories, git status |
-| **PreCompact** | Before context compaction | Prompts Claude to checkpoint current state into `PROJECT.md` |
-| **pre-tool / post-tool** | Around every tool call | git-guardrails — blocks dangerous git operations |
+| **SessionStart** | Session begins | Displays `PROJECT.md`, `ccc status`, git status. Skips `PROJECT.md` in the setup workspace automatically. |
+| **PreCompact** | Before context compaction | Prompts Claude to checkpoint current state into `PROJECT.md` before the conversation is summarised. |
 
 > OpenCode does not support hooks. OpenCode users should run `cat PROJECT.md` manually at session start.
 
@@ -197,6 +196,12 @@ Lightweight headless browser CLI for fetching and scraping pages without Playwri
 | No `shell=True` | All subprocess calls use argument arrays |
 | Download integrity | Domain allowlist + SHA256 verification via `setup_helpers.py download-verified` |
 | No credential leakage | Secrets never written to files — env vars only |
+| Pinned MCP versions | `project-files/` ships exact semver pins — no silent `@latest` upgrades on launch |
+| Pre-publish secret scan | Build fails if API keys, home paths, or email addresses are found in release assets |
+| Overwrite protection | `install-skill`, `install-opencode-command`, `apply-template` refuse to clobber existing files without `--force` |
+| Subprocess timeouts | All install checks time out after 30 s; downloads time out after 60 s |
+| Audit log | Every write appends a JSON line to `~/.claude/setup-audit.jsonl` |
+| Vulnerability reporting | See [SECURITY.md](SECURITY.md) — private disclosure via GitHub Security Advisories |
 
 ---
 
@@ -224,7 +229,26 @@ uv run pytest                  # must be clean first
 uv run python -m scripts.build_release --version X.Y.Z --output dist/
 ```
 
-Outputs `dist/ai-coding-stack-vX.Y.Z.zip` + `.sha256` sidecar. Previous versions auto-archived (keeps latest 5).
+Outputs `dist/ai-coding-stack-vX.Y.Z.zip` + `.sha256` sidecar. The build runs a **pre-publish content scan** before zipping — it will refuse to build if any API key, home path, or email address is found in the release assets outside the known-safe allowlist. Previous versions auto-archived (keeps latest 5).
+
+### setup_helpers.py CLI reference
+
+The `setup_helpers.py` bundled in the zip is the sole installer helper — stdlib-only, no dependencies.
+
+| Subcommand | Purpose |
+|-----------|---------|
+| `version` | Print the release version |
+| `check-prereqs <keys…>` | Check tool prerequisites, print JSON |
+| `check-installed <kind> <id>` | Check if a tool/skill/MCP is installed, print JSON |
+| `install-skill <name> <file>` | Install a SKILL.md to `~/.claude/skills/` |
+| `install-opencode-command <name> <file>` | Install an OpenCode slash command |
+| `apply-template <name>` | Apply hooks or global CLAUDE.md template |
+| `diff-template global_claude_md` | Show unified diff between installed CLAUDE.md and template |
+| `write-mcp <name> <json>` | Merge MCP server entry into `.mcp.json` |
+| `write-opencode-mcp <name> <json>` | Merge MCP server entry into `opencode.json` |
+| `download-verified <url> <dest> <sha256>` | HTTPS download with SHA256 verification |
+
+All write commands accept `--dry-run` (preview without writing) and `--force` (overwrite existing files). All write operations append to `~/.claude/setup-audit.jsonl`.
 
 ### Running tests
 
@@ -241,16 +265,21 @@ ai-coding-setup/
 ├── scripts/
 │   ├── build_release.py           # builds the release zip
 │   ├── setup_helpers.py           # stdlib-only installer (bundled in zip)
-│   └── lib/config.py              # TOML utilities
+│   ├── mem0_server.py             # mem0 MCP server (bundled in zip)
+│   └── lib/
+│       ├── config.py              # TOML utilities
+│       └── sanitize_check.py      # pre-publish secret/PII scan
 ├── prompts/
 │   └── setup-stack.md             # /setup-stack playbook + slash command
 ├── templates/
 │   ├── claude_md/global.md        # global CLAUDE.md → ~/.claude/CLAUDE.md
-│   ├── hooks/                     # SessionStart, PreCompact, git-guardrails
+│   ├── hooks/                     # SessionStart + PreCompact hooks
 │   ├── project_md/PROJECT.md      # PROJECT.md starter template
 │   └── skills/                    # bundled SKILL.md files
-├── release_assets/                # files copied verbatim into the zip root
-├── tests/                         # pytest suite
+├── release_assets/                # CLAUDE.md, AGENTS.md, .gitignore for zip root
+├── tolaria_vault/                 # pre-populated Tolaria knowledge base (public — see CONTRIBUTING.md)
+├── SECURITY.md                    # vulnerability reporting policy
+├── tests/                         # pytest suite (80 tests)
 └── dist/                          # built zips (gitignored)
 ```
 
