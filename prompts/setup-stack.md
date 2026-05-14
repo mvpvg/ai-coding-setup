@@ -123,11 +123,20 @@ Run an AI-guided installation of the curated AI coding stack.
    ```bash
    python setup_helpers.py check-installed global-claude-md
    ```
-   If `installed: true` → ask before overwriting (**Skip recommended** / Overwrite).
+
    If `installed: false` → proceed automatically.
 
+   If `installed: true` → show a diff first so the user can decide:
    ```bash
-   python setup_helpers.py apply-template global_claude_md --project-dir ~
+   python setup_helpers.py diff-template global_claude_md --project-dir ~
+   ```
+   - Exit code 0 / "no diff" → files are identical, skip (nothing to do).
+   - Exit code 1 → diff printed above. Ask the user:
+     > "Your `~/.claude/CLAUDE.md` differs from the template above. **Skip (keep yours)** / **Overwrite (apply template)**"
+     Default to **Skip**. Only overwrite if user explicitly chooses.
+
+   ```bash
+   python setup_helpers.py apply-template global_claude_md --project-dir ~ --force
    ```
 
    **OpenCode global rules** — also install as a global OpenCode command:

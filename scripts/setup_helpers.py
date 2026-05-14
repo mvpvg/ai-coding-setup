@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import difflib
 import hashlib
 import json
 import os
@@ -433,6 +434,34 @@ def apply_template(template_name: str, project_dir: Path, project_type: str = "b
         raise ValueError(f"Unknown template: {template_name}")
 
 
+def diff_template(template_name: str, project_dir: Path) -> str:
+    """Return a unified diff string between the source template and the installed file.
+
+    Returns an empty string if the destination does not exist or the files are identical.
+    Only supported for template_name='global_claude_md'.
+    """
+    templates_root = _templates_root()
+    if template_name == "global_claude_md":
+        src = templates_root / "claude_md" / "global.md"
+        dest = _resolve_project_dir(project_dir) / ".claude" / "CLAUDE.md"
+    else:
+        raise ValueError(f"diff not supported for template: {template_name}")
+
+    if not src.exists():
+        return ""
+    if not dest.exists():
+        return ""
+
+    src_lines = src.read_text(encoding="utf-8").splitlines(keepends=True)
+    dest_lines = dest.read_text(encoding="utf-8").splitlines(keepends=True)
+    diff = list(difflib.unified_diff(
+        dest_lines, src_lines,
+        fromfile=f"installed ({dest})",
+        tofile=f"template ({src})",
+    ))
+    return "".join(diff)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="AI installer helpers")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -483,6 +512,10 @@ def main() -> None:
     ioc.add_argument("--force", action="store_true", help="Overwrite if already installed")
     ioc.add_argument("--dry-run", action="store_true", help="Print what would change without writing")
 
+    dt = sub.add_parser("diff-template", help="Show diff between installed file and source template")
+    dt.add_argument("template_name", choices=["global_claude_md"])
+    dt.add_argument("--project-dir", default="~")
+
     at = sub.add_parser("apply-template")
     at.add_argument("template_name", choices=["hooks", "global_claude_md", "project_md"])
     at.add_argument("--project-type", default="base")
@@ -522,6 +555,13 @@ def main() -> None:
         dest = install_opencode_command(args.name, content, global_install=not args.local, force=args.force, dry_run=args.dry_run)
         if not args.dry_run:
             print(f"Installed: {dest}")
+    elif args.cmd == "diff-template":
+        delta = diff_template(args.template_name, Path(args.project_dir))
+        if delta:
+            print(delta)
+            sys.exit(1)  # exit 1 = files differ (caller decides what to do)
+        else:
+            print("no diff — installed file matches template or does not exist")
     elif args.cmd == "apply-template":
         apply_template(args.template_name, Path(args.project_dir), args.project_type, force=args.force, dry_run=args.dry_run)
 

@@ -533,3 +533,45 @@ def test_resolve_project_dir_rejects_system_path():
 def test_write_mcp_config_rejects_system_path():
     with pytest.raises(ValueError, match="system path"):
         write_mcp_config("x", {}, Path("/etc"))
+
+
+# --- diff_template tests ---
+
+def test_diff_template_returns_empty_when_identical(tmp_path, mocker):
+    from scripts.setup_helpers import diff_template
+    fake_templates = tmp_path / "templates"
+    (fake_templates / "claude_md").mkdir(parents=True)
+    content = "# Global Rules\n"
+    (fake_templates / "claude_md" / "global.md").write_text(content)
+    mocker.patch("scripts.setup_helpers._templates_root", return_value=fake_templates)
+    home = tmp_path / "home"
+    (home / ".claude").mkdir(parents=True)
+    (home / ".claude" / "CLAUDE.md").write_text(content)
+    result = diff_template("global_claude_md", home)
+    assert result == ""
+
+
+def test_diff_template_returns_diff_when_different(tmp_path, mocker):
+    from scripts.setup_helpers import diff_template
+    fake_templates = tmp_path / "templates"
+    (fake_templates / "claude_md").mkdir(parents=True)
+    (fake_templates / "claude_md" / "global.md").write_text("# New Version\n")
+    mocker.patch("scripts.setup_helpers._templates_root", return_value=fake_templates)
+    home = tmp_path / "home"
+    (home / ".claude").mkdir(parents=True)
+    (home / ".claude" / "CLAUDE.md").write_text("# Old Version\n")
+    result = diff_template("global_claude_md", home)
+    assert "-# Old Version" in result
+    assert "+# New Version" in result
+
+
+def test_diff_template_returns_empty_when_dest_missing(tmp_path, mocker):
+    from scripts.setup_helpers import diff_template
+    fake_templates = tmp_path / "templates"
+    (fake_templates / "claude_md").mkdir(parents=True)
+    (fake_templates / "claude_md" / "global.md").write_text("# Global Rules\n")
+    mocker.patch("scripts.setup_helpers._templates_root", return_value=fake_templates)
+    home = tmp_path / "home"
+    home.mkdir()
+    result = diff_template("global_claude_md", home)
+    assert result == ""
