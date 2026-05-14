@@ -21,5 +21,5 @@ For Tolaria knowledge vault setup, see `TOLARIA_SETUP.md`.
 
 > **Setup workspace rules — do not violate:**
 > - Do NOT create or update `PROJECT.md` here. This folder is a setup workspace, not a project.
-> - OpenCode keeps conversation history per folder. After setup is complete, open a new session in your actual project folder — do not continue working here.
+> - **OpenCode session history:** OpenCode stores conversation threads per folder path. If you see previous setup threads in the sidebar when starting a new setup run, tell the user: "Previous session detected — please start a new thread (click + New Thread) then re-run `/setup-stack`." Do not continue in an old thread.
 > - Do NOT copy `opencode.json` from this folder to projects — it belongs only in `project-files/opencode.json` which is already pre-configured.

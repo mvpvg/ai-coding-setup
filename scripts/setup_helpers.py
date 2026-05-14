@@ -177,6 +177,20 @@ def _templates_root() -> Path:
     return Path(__file__).parent.parent / "templates"
 
 
+def _check_opencode_cli() -> bool:
+    """Return True if opencode is available.
+
+    Tries the binary first. Falls back to OPENCODE_* env vars because when a
+    command runs inside OpenCode, the subprocess PATH may not include the
+    opencode binary even though OpenCode is clearly running.
+    """
+    try:
+        subprocess.run(["opencode", "--version"], capture_output=True, check=True)
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return any(k.startswith("OPENCODE_") for k in os.environ)
+
+
 def check_prereqs(keys: list[str]) -> dict[str, bool]:
     """Return {key: present} for each prereq key."""
     result: dict[str, bool] = {}
@@ -187,6 +201,8 @@ def check_prereqs(keys: list[str]) -> dict[str, bool]:
             result[key] = _check_gh_token()
         elif key == "postgres-conn-string":
             result[key] = _check_postgres_conn_string()
+        elif key == "opencode-cli":
+            result[key] = _check_opencode_cli()
         elif key in _PREREQ_COMMANDS:
             try:
                 subprocess.run(

@@ -2,6 +2,10 @@ Run an AI-guided installation of the curated AI coding stack.
 
 ## Flow
 
+0. **Clean up stale setup state.** Before anything else:
+   - If `PROJECT.md` exists in the current folder, delete it — it is leftover state from a previous setup run and will cause confusion. Do not ask; just delete it.
+   - If running in **OpenCode**: check whether there are previous conversation threads visible for this folder. If so, tell the user: "I can see previous setup sessions in the sidebar. Start a new thread now to avoid mixing context — then re-run `/setup-stack` in the fresh thread." Stop here if they need to switch.
+
 1. **Run prereq audit.** Read `stack.toml`, collect every unique prereq key across all `prereqs` arrays, then run:
    ```bash
    python setup_helpers.py check-prereqs <key1> <key2> ...
@@ -11,6 +15,8 @@ Run an AI-guided installation of the curated AI coding stack.
    Also note which platform CLIs are present:
    - `claude-cli` present → Claude Code tools will be installed
    - `opencode-cli` present → OpenCode is available (skills work for both)
+
+   > **Note — `opencode-cli` check inside OpenCode:** When running inside OpenCode, the `opencode --version` subprocess may fail even though OpenCode is clearly installed (PATH differs in the subprocess environment). The check has a fallback via `OPENCODE_*` env vars. If `opencode-cli` still shows as missing but you are running this command inside OpenCode, treat it as ✅ present and continue.
 
 2. **Per-tool loop.** For each tool in `stack.toml` sections in order: `base_tools`, `global_tools`, `mcp_servers`:
 
@@ -134,7 +140,7 @@ Run an AI-guided installation of the curated AI coding stack.
    python setup_helpers.py check-installed hooks
    ```
    If `installed: false` → ask: "Install Claude Code hooks? Installs:
-   - **session-start.sh** — surfaces PROJECT.md, ccc status, recent mem0 memories
+   - **session-start.sh** — surfaces PROJECT.md and ccc status at session start (skips PROJECT.md in setup workspace automatically)
    - **pre-compact.sh** — auto-checkpoints session state to PROJECT.md before compaction
    - **git-guardrails hooks** — blocks dangerous git commands"
 
@@ -178,7 +184,9 @@ Run an AI-guided installation of the curated AI coding stack.
    >
    > **Claude Code projects:** `.mcp.json`, `CLAUDE.md`, `.gitignore`, `.claude/`
    >
-   > **OpenCode projects:** `opencode.json`, `AGENTS.md`, `.gitignore`
+   > **OpenCode projects:** `opencode.json`, `AGENTS.md`, `.gitignore`, `.opencode/`
+   >
+   > **OpenCode users:** This setup folder keeps a conversation history for this directory. For your actual projects, open the project folder fresh — don't continue in this setup folder.
    >
    > This setup folder is permanent — re-run `/setup-stack` any time to install missing tools."
 
@@ -193,3 +201,4 @@ Run an AI-guided installation of the curated AI coding stack.
 ## Re-runs
 
 Safe to re-run. Already-installed tools default to Skip. Only missing tools will be installed.
+PROJECT.md is deleted at the start of each run (step 0) so stale state never accumulates.
