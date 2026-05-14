@@ -12,6 +12,8 @@ from scripts.setup_helpers import (
     download_with_verify,
     write_mcp_config,
     apply_template,
+    install_skill,
+    install_opencode_command,
 )
 
 
@@ -335,3 +337,94 @@ def test_stack_does_not_install_mempalace():
     # claude-hud is Claude Code only
     assert "claude_hud" in stack.get("base_tools", {})
     assert stack["base_tools"]["claude_hud"]["platforms"] == ["claude-code"]
+
+
+# --- P2.2 timeout tests ---
+
+def test_check_installed_timeout_returns_not_installed(mocker):
+    import subprocess
+    mocker.patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd=["pnpm"], timeout=30))
+    from scripts.setup_helpers import check_installed
+    result = check_installed("npm-global", "some-pkg")
+    assert result["installed"] is False
+    assert "timed out" in result["detail"]
+
+
+def test_check_prereqs_timeout_returns_false(mocker):
+    import subprocess
+    mocker.patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd=["node"], timeout=30))
+    result = check_prereqs(["node"])
+    assert result["node"] is False
+
+
+# --- P2.3 force flag tests ---
+
+def test_install_skill_refuses_overwrite_without_force(tmp_path, mocker):
+    mocker.patch("pathlib.Path.home", return_value=tmp_path)
+    content = "# skill"
+    # First install succeeds
+    install_skill("myskill", content)
+    # Second install without force raises
+    with pytest.raises(FileExistsError, match="--force"):
+        install_skill("myskill", content)
+
+
+def test_install_skill_overwrites_with_force(tmp_path, mocker):
+    mocker.patch("pathlib.Path.home", return_value=tmp_path)
+    install_skill("myskill", "# v1")
+    dest = install_skill("myskill", "# v2", force=True)
+    assert dest.read_text() == "# v2"
+
+
+def test_install_opencode_command_refuses_overwrite_without_force(tmp_path, mocker):
+    mocker.patch(
+        "scripts.setup_helpers._opencode_config_dir",
+        return_value=tmp_path / "opencode",
+    )
+    content = "# cmd"
+    install_opencode_command("mycmd", content)
+    with pytest.raises(FileExistsError, match="--force"):
+        install_opencode_command("mycmd", content)
+
+
+def test_install_opencode_command_overwrites_with_force(tmp_path, mocker):
+    mocker.patch(
+        "scripts.setup_helpers._opencode_config_dir",
+        return_value=tmp_path / "opencode",
+    )
+    install_opencode_command("mycmd", "# v1")
+    dest = install_opencode_command("mycmd", "# v2", force=True)
+    assert dest.read_text() == "# v2"
+
+
+def test_apply_template_hooks_refuses_overwrite_without_force(tmp_path, mocker):
+    hooks_src = tmp_path / "templates" / "hooks"
+    hooks_src.mkdir(parents=True)
+    (hooks_src / "session-start.sh").write_text("#!/bin/bash\necho hi")
+    mocker.patch("scripts.setup_helpers._templates_root", return_value=tmp_path / "templates")
+    project = tmp_path / "project"
+    project.mkdir()
+    # First apply succeeds
+    apply_template("hooks", project)
+    # Second apply without force raises
+    with pytest.raises(FileExistsError, match="--force"):
+        apply_template("hooks", project)
+
+
+def test_apply_template_hooks_creates_backup_with_force(tmp_path, mocker):
+    hooks_src = tmp_path / "templates" / "hooks"
+    hooks_src.mkdir(parents=True)
+    (hooks_src / "session-start.sh").write_text("#!/bin/bash\necho v2")
+    mocker.patch("scripts.setup_helpers._templates_root", return_value=tmp_path / "templates")
+    project = tmp_path / "project"
+    project.mkdir()
+    # Pre-create existing hook
+    hooks_dest = project / ".claude" / "hooks"
+    hooks_dest.mkdir(parents=True)
+    (hooks_dest / "session-start.sh").write_text("#!/bin/bash\necho v1")
+    # Force replace should create a backup
+    apply_template("hooks", project, force=True)
+    backups = list(hooks_dest.glob("session-start.sh.backup-*"))
+    assert len(backups) == 1
+    assert backups[0].read_text() == "#!/bin/bash\necho v1"
+    assert (hooks_dest / "session-start.sh").read_text() == "#!/bin/bash\necho v2"

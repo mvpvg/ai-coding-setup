@@ -366,7 +366,7 @@ Add mem0 to `~/.claude/mcp.json` (create the file if it doesn't exist):
       "env": {
         "OPENROUTER_API_KEY": "${OPENROUTER_API_KEY}",
         "MEM0_STORE_PATH": "~/.mem0",
-        "MEM0_MODEL": "openai/gpt-5.4-nano",
+        "MEM0_MODEL": "openai/gpt-4o-mini",
         "MEM0_EMBED_MODEL": "BAAI/bge-small-en-v1.5"
       }
     }
@@ -384,18 +384,18 @@ After editing, restart Claude Code. Verify with:
 mem0 runs as an MCP server via `uv run` — no separate install step needed.
 `uv` downloads dependencies on first run and caches them. First startup ~30 s; subsequent starts fast.
 
-- **LLM extraction:** OpenRouter → `gpt-5.4-nano` (cheap, fast — see model table below)
+- **LLM extraction:** OpenRouter → `gpt-4o-mini` (cheap, fast — see model table below)
 - **Embeddings:** FastEmbed `BAAI/bge-small-en-v1.5` (CPU-only ONNX, ~130 MB, fully local)
 - **Storage:** ChromaDB at `~/.mem0/` (local, no cloud sync)
 
 ## Recommended Models
 
-| Model ID | Cost (input/output per 1M tokens) | Best for |
-|----------|----------------------------------|----------|
-| `openai/gpt-5.4-nano` | $0.20 / $1.25 | **Default** — cheapest, fast enough for fact extraction |
-| `openai/gpt-5.4-mini` | $0.75 / $4.50 | Balanced — better reasoning, still affordable |
-| `google/gemini-3.1-flash-lite` | $0.25 / $1.50 | Google alternative, similar price |
-| `anthropic/claude-haiku-latest` | $1.00 / $5.00 | Best extraction quality, Anthropic option |
+| Model ID | Best for |
+|----------|----------|
+| `openai/gpt-4o-mini` | **Default** — widely available, cheap, fast enough for fact extraction |
+| `openai/gpt-4.1-mini` | Newer alternative with strong instruction following |
+| `google/gemini-2.0-flash-001` | Google alternative, similar cost bracket |
+| `anthropic/claude-haiku-4-5` | Best extraction quality, Anthropic option |
 
 To change, set `MEM0_MODEL` in the `env` block of `~/.claude/mcp.json`.
 

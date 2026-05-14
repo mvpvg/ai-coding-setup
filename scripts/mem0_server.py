@@ -4,7 +4,7 @@ Run via: uv run --with "mem0ai[mcp]" --with litellm --with fastembed scripts/mem
 
 Environment variables:
   OPENROUTER_API_KEY   Required. Your OpenRouter API key.
-  MEM0_MODEL           LLM for fact extraction (default: openrouter/anthropic/claude-haiku-4-5)
+  MEM0_MODEL           LLM for fact extraction (default: openai/gpt-4o-mini)
   MEM0_EMBED_MODEL     FastEmbed model for vectors (default: BAAI/bge-small-en-v1.5, ~130 MB)
   MEM0_STORE_PATH      ChromaDB + history path (default: ~/.mem0)
   MEM0_USER_ID         User namespace for memories (default: default)
@@ -32,7 +32,7 @@ def _build_memory() -> Memory:
         "llm": {
             "provider": "litellm",
             "config": {
-                "model": os.environ.get("MEM0_MODEL", "openai/gpt-5.4-nano"),
+                "model": os.environ.get("MEM0_MODEL", "openai/gpt-4o-mini"),
                 "api_key": api_key,
                 "api_base": _OPENROUTER_BASE,
             },

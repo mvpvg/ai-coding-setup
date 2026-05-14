@@ -18,6 +18,8 @@ from typing import Any
 from urllib.parse import urlparse
 
 
+_DEFAULT_TIMEOUT = 30  # seconds; applies to all subprocess checks
+
 _PREREQ_COMMANDS: dict[str, list[str]] = {
     "docker": ["docker", "--version"],
     "node": ["node", "--version"],
@@ -79,7 +81,7 @@ def check_installed(kind: str, identifier: str = "", project_dir: str = "") -> d
         if kind == "plugin":
             result = subprocess.run(
                 ["claude", "plugin", "list"],
-                capture_output=True, text=True,
+                capture_output=True, text=True, timeout=_DEFAULT_TIMEOUT,
             )
             installed = identifier in result.stdout
             return {"installed": installed, "detail": f"plugin list {'contains' if installed else 'missing'} {identifier}"}
@@ -91,7 +93,7 @@ def check_installed(kind: str, identifier: str = "", project_dir: str = "") -> d
         if kind == "uv-tool":
             result = subprocess.run(
                 ["uv", "tool", "list"],
-                capture_output=True, text=True,
+                capture_output=True, text=True, timeout=_DEFAULT_TIMEOUT,
             )
             # uv tool list output: "package-name v1.2.3"
             pkg_base = identifier.split("[")[0].lower()
@@ -104,7 +106,7 @@ def check_installed(kind: str, identifier: str = "", project_dir: str = "") -> d
         if kind == "npm-global":
             result = subprocess.run(
                 ["pnpm", "list", "-g", "--depth=0"],
-                capture_output=True, text=True,
+                capture_output=True, text=True, timeout=_DEFAULT_TIMEOUT,
             )
             pkg_base = identifier.lstrip("@").split("/")[-1] if "/" in identifier else identifier.lstrip("@")
             installed = identifier in result.stdout or pkg_base in result.stdout
@@ -140,6 +142,8 @@ def check_installed(kind: str, identifier: str = "", project_dir: str = "") -> d
             path = Path.home() / ".claude" / "CLAUDE.md"
             return {"installed": path.exists(), "detail": str(path)}
 
+    except subprocess.TimeoutExpired:
+        return {"installed": False, "detail": f"check timed out after {_DEFAULT_TIMEOUT}s"}
     except Exception as exc:
         return {"installed": False, "detail": f"check error: {exc}"}
 
@@ -158,9 +162,10 @@ def _check_gh_token() -> bool:
             ["gh", "auth", "status"],
             capture_output=True,
             check=True,
+            timeout=_DEFAULT_TIMEOUT,
         )
         return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
         return False
 
 
@@ -185,9 +190,9 @@ def _check_opencode_cli() -> bool:
     opencode binary even though OpenCode is clearly running.
     """
     try:
-        subprocess.run(["opencode", "--version"], capture_output=True, check=True)
+        subprocess.run(["opencode", "--version"], capture_output=True, check=True, timeout=_DEFAULT_TIMEOUT)
         return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
         return any(k.startswith("OPENCODE_") for k in os.environ)
 
 
@@ -209,9 +214,10 @@ def check_prereqs(keys: list[str]) -> dict[str, bool]:
                     _PREREQ_COMMANDS[key],
                     capture_output=True,
                     check=True,
+                    timeout=_DEFAULT_TIMEOUT,
                 )
                 result[key] = True
-            except (subprocess.CalledProcessError, FileNotFoundError):
+            except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
                 result[key] = False
         else:
             result[key] = False
@@ -278,16 +284,18 @@ def write_opencode_mcp_config(name: str, config: dict[str, Any], project_dir: Pa
     config_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
-def install_skill(name: str, content: str) -> Path:
+def install_skill(name: str, content: str, force: bool = False) -> Path:
     """Install a skill to ~/.claude/skills/<name>/SKILL.md (works for both Claude Code and OpenCode)."""
     skills_dir = Path.home() / ".claude" / "skills" / name
     skills_dir.mkdir(parents=True, exist_ok=True)
     dest = skills_dir / "SKILL.md"
+    if dest.exists() and not force:
+        raise FileExistsError(f"Refusing to overwrite {dest}; pass --force to replace")
     dest.write_text(content, encoding="utf-8")
     return dest
 
 
-def install_opencode_command(name: str, content: str, global_install: bool = True) -> Path:
+def install_opencode_command(name: str, content: str, global_install: bool = True, force: bool = False) -> Path:
     """Write a custom OpenCode slash command.
 
     global_install=True  → ~/.config/opencode/commands/<name>.md
@@ -299,15 +307,19 @@ def install_opencode_command(name: str, content: str, global_install: bool = Tru
         commands_dir = Path(".opencode") / "commands"
     commands_dir.mkdir(parents=True, exist_ok=True)
     dest = commands_dir / f"{name}.md"
+    if dest.exists() and not force:
+        raise FileExistsError(f"Refusing to overwrite {dest}; pass --force to replace")
     dest.write_text(content, encoding="utf-8")
     return dest
 
 
-def apply_template(template_name: str, project_dir: Path, project_type: str = "base") -> None:
+def apply_template(template_name: str, project_dir: Path, project_type: str = "base", force: bool = False) -> None:
     """Apply a template to the project directory.
 
     template_name: 'hooks' or 'global_claude_md'
+    force: overwrite existing files (hooks also writes .backup-<ts> next to each replaced file)
     """
+    import time
     templates_root = _templates_root()
 
     if template_name == "hooks":
@@ -317,6 +329,11 @@ def apply_template(template_name: str, project_dir: Path, project_type: str = "b
         for hook in sorted(src_dir.iterdir()):
             if hook.is_file():
                 dst = dest_dir / hook.name
+                if dst.exists() and not force:
+                    raise FileExistsError(f"Refusing to overwrite {dst}; pass --force to replace")
+                if dst.exists() and force:
+                    ts = int(time.time())
+                    dst.rename(dst.parent / f"{dst.name}.backup-{ts}")
                 shutil.copy2(hook, dst)
                 if hook.suffix == ".sh":
                     dst.chmod(0o755)
@@ -325,12 +342,14 @@ def apply_template(template_name: str, project_dir: Path, project_type: str = "b
         if src.exists():
             dest = project_dir / ".claude" / "CLAUDE.md"
             dest.parent.mkdir(parents=True, exist_ok=True)
+            if dest.exists() and not force:
+                raise FileExistsError(f"Refusing to overwrite {dest}; pass --force to replace")
             shutil.copy2(src, dest)
     elif template_name == "project_md":
         src = templates_root / "project_md" / "PROJECT.md"
         if src.exists():
             dest = project_dir / "PROJECT.md"
-            if dest.exists():
+            if dest.exists() and not force:
                 return  # don't overwrite existing
             shutil.copy2(src, dest)
     else:
@@ -372,17 +391,20 @@ def main() -> None:
     isk = sub.add_parser("install-skill")
     isk.add_argument("name", help="Skill name (e.g. brainstorm, plan, tdd)")
     isk.add_argument("file", help="Path to SKILL.md file to install")
+    isk.add_argument("--force", action="store_true", help="Overwrite if already installed")
 
     ioc = sub.add_parser("install-opencode-command")
     ioc.add_argument("name", help="Command name (without .md)")
     ioc.add_argument("file", help="Path to markdown file to install as command")
     ioc.add_argument("--local", action="store_true",
                      help="Install to .opencode/commands/ instead of global config")
+    ioc.add_argument("--force", action="store_true", help="Overwrite if already installed")
 
     at = sub.add_parser("apply-template")
     at.add_argument("template_name", choices=["hooks", "global_claude_md", "project_md"])
     at.add_argument("--project-type", default="base")
     at.add_argument("--project-dir", default=".")
+    at.add_argument("--force", action="store_true", help="Overwrite existing files (hooks: writes .backup-<ts> first)")
 
     args = parser.parse_args()
 
@@ -402,7 +424,7 @@ def main() -> None:
         write_mcp_config(args.name, config, Path(args.project_dir))
     elif args.cmd == "install-skill":
         content = Path(args.file).read_text(encoding="utf-8")
-        dest = install_skill(args.name, content)
+        dest = install_skill(args.name, content, force=args.force)
         print(f"Installed: {dest}")
     elif args.cmd == "write-opencode-mcp":
         config = json.loads(args.config_json)
@@ -410,10 +432,10 @@ def main() -> None:
         write_opencode_mcp_config(args.name, config, project_dir)
     elif args.cmd == "install-opencode-command":
         content = Path(args.file).read_text(encoding="utf-8")
-        dest = install_opencode_command(args.name, content, global_install=not args.local)
+        dest = install_opencode_command(args.name, content, global_install=not args.local, force=args.force)
         print(f"Installed: {dest}")
     elif args.cmd == "apply-template":
-        apply_template(args.template_name, Path(args.project_dir), args.project_type)
+        apply_template(args.template_name, Path(args.project_dir), args.project_type, force=args.force)
 
 
 if __name__ == "__main__":
