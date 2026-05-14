@@ -597,10 +597,9 @@ def build_release(version: str, output_dir: Path, repo_root: Path) -> Path:
     try:
         # Core files
         shutil.copy2(repo_root / "stack.toml", staging / "stack.toml")
-        shutil.copy2(
-            repo_root / "scripts" / "setup_helpers.py",
-            staging / "setup_helpers.py",
-        )
+        helpers_src = (repo_root / "scripts" / "setup_helpers.py").read_text(encoding="utf-8")
+        helpers_src = helpers_src.replace('__version__ = "0.6.0"', f'__version__ = "{version}"')
+        (staging / "setup_helpers.py").write_text(helpers_src, encoding="utf-8")
         shutil.copy2(
             repo_root / "scripts" / "mem0_server.py",
             staging / "mem0_server.py",

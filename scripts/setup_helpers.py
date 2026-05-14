@@ -6,6 +6,7 @@ Every public function is also exposed as a CLI subcommand.
 from __future__ import annotations
 
 import argparse
+import datetime
 import hashlib
 import json
 import os
@@ -18,7 +19,15 @@ from typing import Any
 from urllib.parse import urlparse
 
 
+__version__ = "0.6.0"
+
 _DEFAULT_TIMEOUT = 30  # seconds; applies to all subprocess checks
+_DOWNLOAD_TIMEOUT = 60  # seconds; for binary downloads
+
+_SYSTEM_PATH_BLOCKLIST: frozenset[Path] = frozenset(
+    Path(p).resolve() for p in ("/etc", "/usr", "/bin", "/sbin", "/lib", "/boot", "/sys", "/proc")
+    if Path(p).exists()
+)
 
 _PREREQ_COMMANDS: dict[str, list[str]] = {
     "docker": ["docker", "--version"],
@@ -56,6 +65,29 @@ def _opencode_config_dir() -> Path:
     else:
         base = os.environ.get("XDG_CONFIG_HOME", "~/.config")
     return Path(base).expanduser() / "opencode"
+
+
+def _audit_log(action: str, target: str, detail: dict[str, Any]) -> None:
+    """Append one JSON line to ~/.claude/setup-audit.jsonl."""
+    log_path = Path.home() / ".claude" / "setup-audit.jsonl"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    entry = {
+        "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "action": action,
+        "target": target,
+        **detail,
+    }
+    with log_path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
+def _resolve_project_dir(project_dir: str | Path) -> Path:
+    """Resolve project_dir to absolute path; reject system directories."""
+    resolved = Path(project_dir).expanduser().resolve()
+    for blocked in _SYSTEM_PATH_BLOCKLIST:
+        if resolved == blocked or blocked in resolved.parents:
+            raise ValueError(f"Refusing to write to system path: {resolved}")
+    return resolved
 
 
 def check_installed(kind: str, identifier: str = "", project_dir: str = "") -> dict[str, Any]:
@@ -242,15 +274,27 @@ def download_with_verify(url: str, dest: Path, expected_sha256: str) -> None:
     if host not in _ALLOWED_DOMAINS:
         raise ValueError(f"Domain not in allowlist: {host}")
     dest.parent.mkdir(parents=True, exist_ok=True)
-    urllib.request.urlretrieve(url, dest)  # nosec B310 — scheme/domain validated above
-    if not verify_sha256(dest, expected_sha256):
-        dest.unlink()
+    h = hashlib.sha256()
+    try:
+        with urllib.request.urlopen(url, timeout=_DOWNLOAD_TIMEOUT) as resp, open(dest, "wb") as out:  # nosec B310
+            while chunk := resp.read(65536):
+                h.update(chunk)
+                out.write(chunk)
+    except Exception:
+        dest.unlink(missing_ok=True)
+        raise
+    if h.hexdigest().lower() != expected_sha256.lower():
+        dest.unlink(missing_ok=True)
         raise RuntimeError(f"SHA256 mismatch for {url}")
 
 
-def write_mcp_config(name: str, config: dict[str, Any], project_dir: Path) -> None:
+def write_mcp_config(name: str, config: dict[str, Any], project_dir: Path, dry_run: bool = False) -> None:
     """Merge an MCP server config entry into project_dir/.mcp.json (Claude Code format)."""
+    project_dir = _resolve_project_dir(project_dir)
     mcp_path = project_dir / ".mcp.json"
+    if dry_run:
+        print(f"[dry-run] would write mcp entry '{name}' to {mcp_path}")
+        return
     if mcp_path.exists():
         data = json.loads(mcp_path.read_text(encoding="utf-8"))
     else:
@@ -259,21 +303,26 @@ def write_mcp_config(name: str, config: dict[str, Any], project_dir: Path) -> No
         data["mcpServers"] = {}
     data["mcpServers"][name] = config
     mcp_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    _audit_log("write-mcp", str(mcp_path), {"server": name})
 
 
-def write_opencode_mcp_config(name: str, config: dict[str, Any], project_dir: Path | None = None) -> None:
+def write_opencode_mcp_config(name: str, config: dict[str, Any], project_dir: Path | None = None, dry_run: bool = False) -> None:
     """Merge an MCP server config entry into OpenCode's config file.
 
     Writes to project_dir/opencode.json if project_dir given, else ~/.config/opencode/opencode.json.
     OpenCode MCP format: {"mcp": {"<name>": {<config>}}}
     """
     if project_dir is not None:
+        project_dir = _resolve_project_dir(project_dir)
         config_path = project_dir / "opencode.json"
     else:
         cfg_dir = _opencode_config_dir()
         cfg_dir.mkdir(parents=True, exist_ok=True)
         config_path = cfg_dir / "opencode.json"
 
+    if dry_run:
+        print(f"[dry-run] would write opencode mcp entry '{name}' to {config_path}")
+        return
     if config_path.exists():
         data = json.loads(config_path.read_text(encoding="utf-8"))
     else:
@@ -282,20 +331,26 @@ def write_opencode_mcp_config(name: str, config: dict[str, Any], project_dir: Pa
         data["mcp"] = {}
     data["mcp"][name] = config
     config_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    _audit_log("write-opencode-mcp", str(config_path), {"server": name})
 
 
-def install_skill(name: str, content: str, force: bool = False) -> Path:
+def install_skill(name: str, content: str, force: bool = False, dry_run: bool = False) -> Path:
     """Install a skill to ~/.claude/skills/<name>/SKILL.md (works for both Claude Code and OpenCode)."""
     skills_dir = Path.home() / ".claude" / "skills" / name
-    skills_dir.mkdir(parents=True, exist_ok=True)
     dest = skills_dir / "SKILL.md"
+    if dry_run:
+        action = "overwrite" if dest.exists() else "create"
+        print(f"[dry-run] would {action} {dest}")
+        return dest
+    skills_dir.mkdir(parents=True, exist_ok=True)
     if dest.exists() and not force:
         raise FileExistsError(f"Refusing to overwrite {dest}; pass --force to replace")
     dest.write_text(content, encoding="utf-8")
+    _audit_log("install-skill", str(dest), {"name": name, "force": force})
     return dest
 
 
-def install_opencode_command(name: str, content: str, global_install: bool = True, force: bool = False) -> Path:
+def install_opencode_command(name: str, content: str, global_install: bool = True, force: bool = False, dry_run: bool = False) -> Path:
     """Write a custom OpenCode slash command.
 
     global_install=True  → ~/.config/opencode/commands/<name>.md
@@ -305,30 +360,41 @@ def install_opencode_command(name: str, content: str, global_install: bool = Tru
         commands_dir = _opencode_config_dir() / "commands"
     else:
         commands_dir = Path(".opencode") / "commands"
-    commands_dir.mkdir(parents=True, exist_ok=True)
     dest = commands_dir / f"{name}.md"
+    if dry_run:
+        action = "overwrite" if dest.exists() else "create"
+        print(f"[dry-run] would {action} {dest}")
+        return dest
+    commands_dir.mkdir(parents=True, exist_ok=True)
     if dest.exists() and not force:
         raise FileExistsError(f"Refusing to overwrite {dest}; pass --force to replace")
     dest.write_text(content, encoding="utf-8")
+    _audit_log("install-opencode-command", str(dest), {"name": name, "force": force})
     return dest
 
 
-def apply_template(template_name: str, project_dir: Path, project_type: str = "base", force: bool = False) -> None:
+def apply_template(template_name: str, project_dir: Path, project_type: str = "base", force: bool = False, dry_run: bool = False) -> None:
     """Apply a template to the project directory.
 
     template_name: 'hooks' or 'global_claude_md'
     force: overwrite existing files (hooks also writes .backup-<ts> next to each replaced file)
+    dry_run: print what would change without writing anything
     """
     import time
+    project_dir = _resolve_project_dir(project_dir)
     templates_root = _templates_root()
 
     if template_name == "hooks":
         src_dir = templates_root / "hooks"
         dest_dir = project_dir / ".claude" / "hooks"
-        dest_dir.mkdir(parents=True, exist_ok=True)
         for hook in sorted(src_dir.iterdir()):
             if hook.is_file():
                 dst = dest_dir / hook.name
+                if dry_run:
+                    action = "overwrite" if dst.exists() else "create"
+                    print(f"[dry-run] would {action} {dst}")
+                    continue
+                dest_dir.mkdir(parents=True, exist_ok=True)
                 if dst.exists() and not force:
                     raise FileExistsError(f"Refusing to overwrite {dst}; pass --force to replace")
                 if dst.exists() and force:
@@ -337,21 +403,32 @@ def apply_template(template_name: str, project_dir: Path, project_type: str = "b
                 shutil.copy2(hook, dst)
                 if hook.suffix == ".sh":
                     dst.chmod(0o755)
+                _audit_log("apply-template", str(dst), {"template": template_name, "force": force})
     elif template_name == "global_claude_md":
         src = templates_root / "claude_md" / "global.md"
         if src.exists():
             dest = project_dir / ".claude" / "CLAUDE.md"
+            if dry_run:
+                action = "overwrite" if dest.exists() else "create"
+                print(f"[dry-run] would {action} {dest}")
+                return
             dest.parent.mkdir(parents=True, exist_ok=True)
             if dest.exists() and not force:
                 raise FileExistsError(f"Refusing to overwrite {dest}; pass --force to replace")
             shutil.copy2(src, dest)
+            _audit_log("apply-template", str(dest), {"template": template_name, "force": force})
     elif template_name == "project_md":
         src = templates_root / "project_md" / "PROJECT.md"
         if src.exists():
             dest = project_dir / "PROJECT.md"
+            if dry_run:
+                action = "overwrite" if dest.exists() else "create"
+                print(f"[dry-run] would {action} {dest}")
+                return
             if dest.exists() and not force:
                 return  # don't overwrite existing
             shutil.copy2(src, dest)
+            _audit_log("apply-template", str(dest), {"template": template_name, "force": force})
     else:
         raise ValueError(f"Unknown template: {template_name}")
 
@@ -359,6 +436,8 @@ def apply_template(template_name: str, project_dir: Path, project_type: str = "b
 def main() -> None:
     parser = argparse.ArgumentParser(description="AI installer helpers")
     sub = parser.add_subparsers(dest="cmd", required=True)
+
+    sub.add_parser("version", help="Print setup_helpers version")
 
     cp = sub.add_parser("check-prereqs", help="Check prereq keys, print JSON")
     cp.add_argument("keys", nargs="+")
@@ -381,17 +460,20 @@ def main() -> None:
     wm.add_argument("name")
     wm.add_argument("config_json", help="JSON string of MCP server config")
     wm.add_argument("--project-dir", default=".")
+    wm.add_argument("--dry-run", action="store_true", help="Print what would change without writing")
 
     wom = sub.add_parser("write-opencode-mcp")
     wom.add_argument("name")
     wom.add_argument("config_json", help="JSON string of MCP server config")
     wom.add_argument("--project-dir", default=None,
                      help="Write to project opencode.json; omit for global ~/.config/opencode/opencode.json")
+    wom.add_argument("--dry-run", action="store_true", help="Print what would change without writing")
 
     isk = sub.add_parser("install-skill")
     isk.add_argument("name", help="Skill name (e.g. brainstorm, plan, tdd)")
     isk.add_argument("file", help="Path to SKILL.md file to install")
     isk.add_argument("--force", action="store_true", help="Overwrite if already installed")
+    isk.add_argument("--dry-run", action="store_true", help="Print what would change without writing")
 
     ioc = sub.add_parser("install-opencode-command")
     ioc.add_argument("name", help="Command name (without .md)")
@@ -399,16 +481,20 @@ def main() -> None:
     ioc.add_argument("--local", action="store_true",
                      help="Install to .opencode/commands/ instead of global config")
     ioc.add_argument("--force", action="store_true", help="Overwrite if already installed")
+    ioc.add_argument("--dry-run", action="store_true", help="Print what would change without writing")
 
     at = sub.add_parser("apply-template")
     at.add_argument("template_name", choices=["hooks", "global_claude_md", "project_md"])
     at.add_argument("--project-type", default="base")
     at.add_argument("--project-dir", default=".")
     at.add_argument("--force", action="store_true", help="Overwrite existing files (hooks: writes .backup-<ts> first)")
+    at.add_argument("--dry-run", action="store_true", help="Print what would change without writing")
 
     args = parser.parse_args()
 
-    if args.cmd == "check-installed":
+    if args.cmd == "version":
+        print(f"setup_helpers.py {__version__}")
+    elif args.cmd == "check-installed":
         result = check_installed(args.kind, args.identifier, getattr(args, "project_dir", ""))
         print(json.dumps(result))
     elif args.cmd == "check-prereqs":
@@ -421,21 +507,23 @@ def main() -> None:
         download_with_verify(args.url, Path(args.dest), args.sha256)
     elif args.cmd == "write-mcp":
         config = json.loads(args.config_json)
-        write_mcp_config(args.name, config, Path(args.project_dir))
+        write_mcp_config(args.name, config, Path(args.project_dir), dry_run=args.dry_run)
     elif args.cmd == "install-skill":
         content = Path(args.file).read_text(encoding="utf-8")
-        dest = install_skill(args.name, content, force=args.force)
-        print(f"Installed: {dest}")
+        dest = install_skill(args.name, content, force=args.force, dry_run=args.dry_run)
+        if not args.dry_run:
+            print(f"Installed: {dest}")
     elif args.cmd == "write-opencode-mcp":
         config = json.loads(args.config_json)
         project_dir = Path(args.project_dir) if args.project_dir else None
-        write_opencode_mcp_config(args.name, config, project_dir)
+        write_opencode_mcp_config(args.name, config, project_dir, dry_run=args.dry_run)
     elif args.cmd == "install-opencode-command":
         content = Path(args.file).read_text(encoding="utf-8")
-        dest = install_opencode_command(args.name, content, global_install=not args.local, force=args.force)
-        print(f"Installed: {dest}")
+        dest = install_opencode_command(args.name, content, global_install=not args.local, force=args.force, dry_run=args.dry_run)
+        if not args.dry_run:
+            print(f"Installed: {dest}")
     elif args.cmd == "apply-template":
-        apply_template(args.template_name, Path(args.project_dir), args.project_type, force=args.force)
+        apply_template(args.template_name, Path(args.project_dir), args.project_type, force=args.force, dry_run=args.dry_run)
 
 
 if __name__ == "__main__":

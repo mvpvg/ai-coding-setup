@@ -428,3 +428,108 @@ def test_apply_template_hooks_creates_backup_with_force(tmp_path, mocker):
     assert len(backups) == 1
     assert backups[0].read_text() == "#!/bin/bash\necho v1"
     assert (hooks_dest / "session-start.sh").read_text() == "#!/bin/bash\necho v2"
+
+
+# --- P3.1 urlopen tests ---
+
+def test_download_with_verify_uses_urlopen(tmp_path, mocker):
+    """download_with_verify should use urlopen (not urlretrieve) with a timeout."""
+    import io
+    fake_data = b"hello world"
+    import hashlib
+    expected = hashlib.sha256(fake_data).hexdigest()
+    mock_resp = mocker.MagicMock()
+    mock_resp.__enter__ = lambda s: s
+    mock_resp.__exit__ = mocker.MagicMock(return_value=False)
+    mock_resp.read.side_effect = [fake_data, b""]
+    mocker.patch("urllib.request.urlopen", return_value=mock_resp)
+    dest = tmp_path / "file.bin"
+    download_with_verify("https://raw.githubusercontent.com/x/y/z", dest, expected)
+    assert dest.read_bytes() == fake_data
+
+
+def test_download_with_verify_deletes_partial_on_error(tmp_path, mocker):
+    mocker.patch("urllib.request.urlopen", side_effect=OSError("network error"))
+    dest = tmp_path / "file.bin"
+    with pytest.raises(OSError):
+        download_with_verify("https://raw.githubusercontent.com/x/y/z", dest, "abc")
+    assert not dest.exists()
+
+
+# --- P3.2 version tests ---
+
+def test_version_subcommand(capsys):
+    from scripts.setup_helpers import __version__, main
+    import sys
+    sys.argv = ["setup_helpers.py", "version"]
+    main()
+    captured = capsys.readouterr()
+    assert __version__ in captured.out
+    assert "setup_helpers.py" in captured.out
+
+
+# --- P3.3 dry-run tests ---
+
+def test_install_skill_dry_run_makes_no_writes(tmp_path, mocker):
+    mocker.patch("pathlib.Path.home", return_value=tmp_path)
+    dest = install_skill("myskill", "# skill", dry_run=True)
+    assert not dest.exists()
+
+
+def test_apply_template_hooks_dry_run_makes_no_writes(tmp_path, mocker):
+    hooks_src = tmp_path / "templates" / "hooks"
+    hooks_src.mkdir(parents=True)
+    (hooks_src / "session-start.sh").write_text("#!/bin/bash\necho hi")
+    mocker.patch("scripts.setup_helpers._templates_root", return_value=tmp_path / "templates")
+    project = tmp_path / "project"
+    project.mkdir()
+    apply_template("hooks", project, dry_run=True)
+    assert not (project / ".claude" / "hooks" / "session-start.sh").exists()
+
+
+def test_write_mcp_config_dry_run_makes_no_writes(tmp_path, capsys):
+    write_mcp_config("context7", {"command": "pnpm"}, tmp_path, dry_run=True)
+    assert not (tmp_path / ".mcp.json").exists()
+    assert "[dry-run]" in capsys.readouterr().out
+
+
+# --- P3.3 audit log tests ---
+
+def test_install_skill_writes_audit_log(tmp_path, mocker):
+    mocker.patch("pathlib.Path.home", return_value=tmp_path)
+    install_skill("myskill", "# skill")
+    log = tmp_path / ".claude" / "setup-audit.jsonl"
+    assert log.exists()
+    entry = json.loads(log.read_text().strip())
+    assert entry["action"] == "install-skill"
+    assert "myskill" in entry["target"]
+
+
+def test_write_mcp_config_writes_audit_log(tmp_path, mocker):
+    mocker.patch("pathlib.Path.home", return_value=tmp_path)
+    write_mcp_config("context7", {"command": "pnpm"}, tmp_path)
+    log = tmp_path / ".claude" / "setup-audit.jsonl"
+    assert log.exists()
+    entry = json.loads(log.read_text().strip())
+    assert entry["action"] == "write-mcp"
+    assert entry["server"] == "context7"
+
+
+# --- P3.4 path normalization tests ---
+
+def test_resolve_project_dir_expands_home(tmp_path, mocker):
+    from scripts.setup_helpers import _resolve_project_dir
+    mocker.patch("pathlib.Path.home", return_value=tmp_path)
+    result = _resolve_project_dir("~/myproject")
+    assert result.is_absolute()
+
+
+def test_resolve_project_dir_rejects_system_path():
+    from scripts.setup_helpers import _resolve_project_dir
+    with pytest.raises(ValueError, match="system path"):
+        _resolve_project_dir("/etc/passwd/..")
+
+
+def test_write_mcp_config_rejects_system_path():
+    with pytest.raises(ValueError, match="system path"):
+        write_mcp_config("x", {}, Path("/etc"))
