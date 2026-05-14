@@ -35,17 +35,17 @@ _PROJECT_MCP_JSON: dict[str, Any] = {
 _PROJECT_OPENCODE_JSON: dict[str, Any] = {
     "mcp": {
         "context7": {
-            "type": "stdio",
+            "type": "local",
             "command": "pnpm",
             "args": ["exec", "@upstash/context7-mcp"],
         },
         "playwright": {
-            "type": "stdio",
+            "type": "local",
             "command": "pnpm",
             "args": ["exec", "@playwright/mcp@latest"],
         },
         "sequential-thinking": {
-            "type": "stdio",
+            "type": "local",
             "command": "pnpm",
             "args": ["dlx", "-y", "@modelcontextprotocol/server-sequential-thinking"],
         },

@@ -56,7 +56,7 @@ def _opencode_config_dir() -> Path:
     return Path(base).expanduser() / "opencode"
 
 
-def check_installed(kind: str, identifier: str = "") -> dict[str, Any]:
+def check_installed(kind: str, identifier: str = "", project_dir: str = "") -> dict[str, Any]:
     """Check whether a tool is already installed.
 
     Returns {"installed": bool, "detail": str}.
@@ -70,6 +70,10 @@ def check_installed(kind: str, identifier: str = "") -> dict[str, Any]:
       mcp-opencode  — OpenCode opencode.json entry (identifier = server name)
       hooks         — .claude/hooks/ directory has files
       global-claude-md — ~/.claude/CLAUDE.md exists
+
+    project_dir: optional path prefix for mcp / mcp-opencode checks.
+      mcp         → <project_dir>/.mcp.json (default: .mcp.json in CWD)
+      mcp-opencode → <project_dir>/opencode.json (default: global opencode.json)
     """
     try:
         if kind == "plugin":
@@ -107,20 +111,23 @@ def check_installed(kind: str, identifier: str = "") -> dict[str, Any]:
             return {"installed": installed, "detail": f"pnpm global {'contains' if installed else 'missing'} {identifier}"}
 
         if kind == "mcp":
-            mcp_path = Path(".mcp.json")
+            mcp_path = (Path(project_dir) / ".mcp.json") if project_dir else Path(".mcp.json")
             if not mcp_path.exists():
-                return {"installed": False, "detail": ".mcp.json not found"}
+                return {"installed": False, "detail": f"{mcp_path} not found"}
             data = json.loads(mcp_path.read_text(encoding="utf-8"))
             installed = identifier in data.get("mcpServers", {})
-            return {"installed": installed, "detail": f".mcp.json {'has' if installed else 'missing'} {identifier}"}
+            return {"installed": installed, "detail": f"{mcp_path} {'has' if installed else 'missing'} {identifier}"}
 
         if kind == "mcp-opencode":
-            cfg = _opencode_config_dir() / "opencode.json"
+            if project_dir:
+                cfg = Path(project_dir) / "opencode.json"
+            else:
+                cfg = _opencode_config_dir() / "opencode.json"
             if not cfg.exists():
-                return {"installed": False, "detail": "opencode.json not found"}
+                return {"installed": False, "detail": f"{cfg} not found"}
             data = json.loads(cfg.read_text(encoding="utf-8"))
             installed = identifier in data.get("mcp", {})
-            return {"installed": installed, "detail": f"opencode.json {'has' if installed else 'missing'} {identifier}"}
+            return {"installed": installed, "detail": f"{cfg} {'has' if installed else 'missing'} {identifier}"}
 
         if kind == "hooks":
             hooks_dir = Path(".claude") / "hooks"
@@ -324,6 +331,7 @@ def main() -> None:
     ci = sub.add_parser("check-installed", help="Check if a tool is already installed, print JSON")
     ci.add_argument("kind", choices=["plugin", "skill", "uv-tool", "npm-global", "mcp", "mcp-opencode", "hooks", "global-claude-md"])
     ci.add_argument("identifier", nargs="?", default="", help="Tool ID / package name / server name")
+    ci.add_argument("--project-dir", default="", help="For mcp/mcp-opencode: path prefix to .mcp.json or opencode.json")
 
     vh = sub.add_parser("verify-sha256")
     vh.add_argument("path")
@@ -363,7 +371,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.cmd == "check-installed":
-        result = check_installed(args.kind, args.identifier)
+        result = check_installed(args.kind, args.identifier, getattr(args, "project_dir", ""))
         print(json.dumps(result))
     elif args.cmd == "check-prereqs":
         result = check_prereqs(args.keys)

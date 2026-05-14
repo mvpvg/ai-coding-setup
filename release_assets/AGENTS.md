@@ -16,3 +16,10 @@ After setup, copy the files from `project-files/` to any project you work in:
 - **OpenCode projects:** copy `opencode.json`, `AGENTS.md`, `.gitignore`
 
 For Tolaria knowledge vault setup, see `TOLARIA_SETUP.md`.
+
+---
+
+> **Setup workspace rules — do not violate:**
+> - Do NOT create or update `PROJECT.md` here. This folder is a setup workspace, not a project.
+> - OpenCode keeps conversation history per folder. After setup is complete, open a new session in your actual project folder — do not continue working here.
+> - Do NOT copy `opencode.json` from this folder to projects — it belongs only in `project-files/opencode.json` which is already pre-configured.

@@ -25,7 +25,8 @@ Run an AI-guided installation of the curated AI coding stack.
       | `github` (skill) | `python setup_helpers.py check-installed skill <name>` |
       | `uv_tool` | `python setup_helpers.py check-installed uv-tool <package>` |
       | `npm` | `python setup_helpers.py check-installed npm-global <package>` |
-      | `mcp` | `python setup_helpers.py check-installed mcp <name>` |
+      | `mcp` | `python setup_helpers.py check-installed mcp <name> --project-dir project-files` |
+      | `mcp-opencode` | `python setup_helpers.py check-installed mcp-opencode <name> --project-dir project-files` |
 
    3. **If already installed** → show: "✅ Already installed — **Skip (recommended)** / Reinstall"
       Default to Skip. Only reinstall if user explicitly chooses.
@@ -105,6 +106,10 @@ Run an AI-guided installation of the curated AI coding stack.
    python setup_helpers.py write-mcp <name> '<json>' --project-dir project-files
    python setup_helpers.py write-opencode-mcp <name> '<json>' --project-dir project-files
    ```
+
+   > **Important — format differs between editors:**
+   > - Claude Code (`.mcp.json`): use `"type": "stdio"`
+   > - OpenCode (`opencode.json`): use `"type": "local"` (OpenCode's schema; `"stdio"` is invalid and causes ConfigInvalidError)
 
 3. **Write global CLAUDE.md:**
 
