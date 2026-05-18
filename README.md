@@ -3,7 +3,7 @@
 > Opinionated AI coding setup for **Claude Code** and **OpenCode** — skills, memory, MCP servers, and coding rules wired together so every session starts with full context and every agent follows the same workflow.
 
 [![Tests](https://img.shields.io/badge/tests-80%20passing-brightgreen)](#running-tests)
-[![Version](https://img.shields.io/badge/version-0.6.0-blue)](../../releases)
+[![Version](https://img.shields.io/badge/version-0.6.1-blue)](../../releases)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](#)
 
 ---
@@ -113,7 +113,9 @@ The agent checks prerequisites, installs tools, writes your global `CLAUDE.md`, 
 
 ### 4. Copy project files
 
-Copy `project-files/` to each project you work in:
+**Full setup (with MCP servers):** copy `project-files/` to each project.
+
+**Basic setup (no MCP):** copy `basic/` instead — skills, ccc, mem0, and git-guardrails only.
 
 | File / Folder | Editor | What it does |
 |--------------|--------|-------------|
@@ -273,6 +275,7 @@ ai-coding-setup/
 │   └── setup-stack.md             # /setup-stack playbook + slash command
 ├── templates/
 │   ├── claude_md/global.md        # global CLAUDE.md → ~/.claude/CLAUDE.md
+│   ├── claude_md/basic.md         # MCP-free CLAUDE.md → basic/
 │   ├── hooks/                     # SessionStart + PreCompact hooks
 │   ├── project_md/PROJECT.md      # PROJECT.md starter template
 │   └── skills/                    # bundled SKILL.md files
@@ -297,15 +300,18 @@ ai-coding-stack-vX.Y.Z/
 ├── .claude/commands/setup-stack.md
 ├── .opencode/commands/setup-stack.md
 ├── templates/                     # skills, hooks, PROJECT.md template
-└── project-files/                 # copy these to your project
-    ├── .mcp.json                  # Context7 + Playwright + Sequential Thinking
-    ├── opencode.json
-    ├── CLAUDE.md / AGENTS.md      # project coding rules
-    ├── .gitignore
-    ├── PROJECT.md                 # living context doc starter
-    ├── .claude/commands/          # bundled skills as slash commands (Claude Code)
-    ├── .opencode/commands/        # same skills for OpenCode
-    └── .claude/hooks/             # SessionStart + PreCompact hooks
+├── project-files/                 # full setup — copy to your project
+│   ├── .mcp.json                  # Context7 + Playwright + Sequential Thinking
+│   ├── opencode.json              # same MCP servers for OpenCode
+│   ├── CLAUDE.md / AGENTS.md      # project coding rules
+│   ├── .gitignore
+│   ├── PROJECT.md                 # living context doc starter
+│   ├── .claude/commands/          # bundled skills as slash commands (Claude Code)
+│   ├── .opencode/commands/        # same skills for OpenCode
+│   └── .claude/hooks/             # SessionStart + PreCompact hooks
+└── basic/                         # MCP-free setup — skills, ccc, mem0, git-guardrails only
+    ├── CLAUDE.md / AGENTS.md      # stripped rules (no MCP tools)
+    └── opencode.json              # schema + model only, no MCP servers
 ```
 
 ---
