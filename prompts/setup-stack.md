@@ -116,6 +116,8 @@ Run an AI-guided installation of the curated AI coding stack.
    > **Important — format differs between editors:**
    > - Claude Code (`.mcp.json`): use `"type": "stdio"`
    > - OpenCode (`opencode.json`): use `"type": "local"` (OpenCode's schema; `"stdio"` is invalid and causes ConfigInvalidError)
+   >
+   > **Important — npm MCP commands in OpenCode:** Use `pnpm dlx <package>` (not `pnpm exec`). `pnpm exec` requires the package installed in local `node_modules`; `pnpm dlx` fetches and runs without a local install. Example: `{"type": "local", "command": "pnpm", "args": ["dlx", "@upstash/context7-mcp@2.2.5"]}`
 
 3. **Write global CLAUDE.md:**
 

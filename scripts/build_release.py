@@ -34,23 +34,25 @@ _PROJECT_MCP_JSON: dict[str, Any] = {
 }
 
 _PROJECT_OPENCODE_JSON: dict[str, Any] = {
+    "$schema": "https://opencode.ai/config.json",
+    "model": "anthropic/claude-sonnet-4-6",
     "mcp": {
         "context7": {
             "type": "local",
             "command": "pnpm",
-            "args": ["exec", "@upstash/context7-mcp@2.2.5"],
+            "args": ["dlx", "@upstash/context7-mcp@2.2.5"],
         },
         "playwright": {
             "type": "local",
             "command": "pnpm",
-            "args": ["exec", "@playwright/mcp@0.0.75"],
+            "args": ["dlx", "@playwright/mcp@0.0.75"],
         },
         "sequential-thinking": {
             "type": "local",
             "command": "pnpm",
-            "args": ["exec", "@modelcontextprotocol/server-sequential-thinking@2025.12.18"],
+            "args": ["dlx", "@modelcontextprotocol/server-sequential-thinking@2025.12.18"],
         },
-    }
+    },
 }
 
 
@@ -525,6 +527,18 @@ def _build_project_files(staging: Path, repo_root: Path) -> None:
                 dst = hooks_dst / hook
                 shutil.copy2(src, dst)
                 dst.chmod(dst.stat().st_mode | 0o755)
+
+    # basic/ — MCP-free version with only skills, ccc, mem0, git-guardrails
+    basic_dst = staging / "basic"
+    basic_dst.mkdir()
+    basic_md_src = repo_root / "templates" / "claude_md" / "basic.md"
+    if basic_md_src.exists():
+        shutil.copy2(basic_md_src, basic_dst / "CLAUDE.md")
+        shutil.copy2(basic_md_src, basic_dst / "AGENTS.md")
+    (basic_dst / "opencode.json").write_text(
+        json.dumps({"$schema": "https://opencode.ai/config.json", "model": "anthropic/claude-sonnet-4-6"}, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
     # Skill MD files as slash commands for both editors
     # Claude Code: .claude/commands/<name>.md → /name

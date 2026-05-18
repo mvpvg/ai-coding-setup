@@ -20,7 +20,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 
-__version__ = "0.6.0"
+__version__ = "0.6.1"
 
 _DEFAULT_TIMEOUT = 30  # seconds; applies to all subprocess checks
 _DOWNLOAD_TIMEOUT = 60  # seconds; for binary downloads
@@ -327,7 +327,10 @@ def write_opencode_mcp_config(name: str, config: dict[str, Any], project_dir: Pa
     if config_path.exists():
         data = json.loads(config_path.read_text(encoding="utf-8"))
     else:
-        data = {}
+        data = {
+            "$schema": "https://opencode.ai/config.json",
+            "model": "anthropic/claude-sonnet-4-6",
+        }
     if "mcp" not in data:
         data["mcp"] = {}
     data["mcp"][name] = config
