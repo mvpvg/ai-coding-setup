@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "anthropic/claude-sonnet-4-6",
+  "mcp": {
+    "context7": {
+      "type": "local",
+      "command": "pnpm",
+      "args": ["dlx", "@upstash/context7-mcp@2.2.5"]
+    },
+    "playwright": {
+      "type": "local",
+      "command": "pnpm",
+      "args": ["dlx", "@playwright/mcp@0.0.75"]
+    }
+  }
+}

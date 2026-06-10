@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+*.egg-info/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Claude / AI tools
+.claude/audit.log
+_archive/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# Testing
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
+playwright-report/
+test-results/
+
+# Logs
+*.log
+logs/
+
+# Local-only scratch
+.local/
+.private/

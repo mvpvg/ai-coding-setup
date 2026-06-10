@@ -1,0 +1,23 @@
+{
+  "name": "web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"Add frontend tests\" && exit 1"
+  },
+  "dependencies": {
+    "next": "^16.2.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "shared": "workspace:*"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "typescript": "^5.9.0"
+  }
+}

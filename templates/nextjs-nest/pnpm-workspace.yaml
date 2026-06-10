@@ -1,0 +1,10 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+minimumReleaseAge: 1440
+minimumReleaseAgeStrict: true
+minimumReleaseAgeIgnoreMissingTime: false
+trustPolicy: no-downgrade
+syncInjectedDepsAfterScripts:
+  - build
+injectWorkspacePackages: true

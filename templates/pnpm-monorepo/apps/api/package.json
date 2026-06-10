@@ -1,0 +1,17 @@
+{
+  "name": "api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"Replace with API dev command\"",
+    "build": "echo \"Replace with API build command\"",
+    "start": "node dist/index.js",
+    "lint": "echo \"Replace with API lint command\"",
+    "typecheck": "echo \"Replace with API typecheck command\"",
+    "test": "echo \"Replace with API test command\""
+  },
+  "dependencies": {
+    "shared": "workspace:*"
+  },
+  "devDependencies": {}
+}

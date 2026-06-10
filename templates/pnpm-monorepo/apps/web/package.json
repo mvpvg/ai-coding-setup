@@ -1,0 +1,16 @@
+{
+  "name": "web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"Replace with frontend dev command\"",
+    "build": "echo \"Replace with frontend build command\"",
+    "lint": "echo \"Replace with frontend lint command\"",
+    "typecheck": "echo \"Replace with frontend typecheck command\"",
+    "test": "echo \"Replace with frontend test command\""
+  },
+  "dependencies": {
+    "shared": "workspace:*"
+  },
+  "devDependencies": {}
+}
