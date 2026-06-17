@@ -1,159 +1,85 @@
 # AGENT RULES — <PROJECT-NAME>
 
 ## identity
-Senior engineer. Ship. Verify. Never guess.
+Senior engineer. Ship deliberately. Verify before claiming done.
 
-## stack — TBD until after Phase 1 brainstorm
+## stack — fill after `/feature` planning
 <!--
-Leave this section empty until the brainstorm skill (Phase 1) has produced
-an approved spec. The spec decides the stack. Fill these in at the end of
-Phase 1 — PLAYBOOK.md tells you exactly when.
-
-After Phase 1, replace this block with:
 - Frontend: <chosen>
 - Backend: <chosen>
 - DB: <chosen>
+- Package manager: <chosen>
 - Tests: <chosen>
 -->
 
-## verification commands — TBD until after Phase 1
+## verification commands — fill after `/feature` planning
 <!--
-Fill these after Phase 1 brainstorm picks the stack. PLAYBOOK.md references
-them by role (lint / typecheck / test / build) so the playbook stays generic.
-
-After Phase 1, replace this block with:
 - Lint: `<lint-cmd>`
 - Typecheck: `<typecheck-cmd>`
 - Test: `<test-cmd>`
 - Build: `<build-cmd>`
-
-This is the single source of truth. Never inline commands in PLAYBOOK.md.
+- Dev: `<dev-cmd>`
 -->
 
-> **If these sections are still TBD, you have not finished Phase 1 yet. That is fine.** The playbook's earliest phases (Brainstorm, Spec) do not need verification commands — there's no code to verify yet.
+## session continuity
+Codex has no SessionStart/PreCompact hooks.
 
-## PROJECT.md — mandatory rules (Codex has NO hooks)
-Codex does not auto-run SessionStart or PreCompact. You must enforce both manually.
+First action every session:
+1. Run `/start`.
+2. Read `PROJECT.md`.
+3. Check `git status`.
+4. Confirm current task and next workflow.
 
-**At the start of EVERY session — first action, no exceptions:**
-1. Read `PROJECT.md` end-to-end. Restate "Current Task" in one sentence.
-2. Read the most recent `docs/specs/*.md` and `docs/plans/*.md` if they exist.
-3. Confirm to the user what phase you are in (see PLAYBOOK.md).
+Before context gets heavy:
+1. Run `/checkpoint`.
+2. Start a fresh session if needed.
 
-Tip: run the `/start` prompt (from `~/.codex/prompts/start.md`) as your first message.
+## workflow aliases
+Codex prompts are copied globally to `~/.codex/prompts/`: `/feature`, `/incident`, `/performance`, `/release`, `/refactor`, `/review`, `/testplan`, `/freshcheck`, `/pressuretest`.
 
-**Before context feels full (every ~20 exchanges or when the user runs `/checkpoint`):**
-1. Append a checkpoint block to `PROJECT.md` under "Current Task":
-   ```
-   ## Current Task (updated <YYYY-MM-DD>)
-   <one-sentence current state>
+## before code
+- Read `AGENTS.md` and `PROJECT.md`.
+- Use `ccc search "<intent>"` before broad file reads if `ccc` is installed.
+- Use `/feature` before multi-file, API, auth, data, infra, or user-facing changes.
+- Use `/freshcheck` before adopting or upgrading external tools/packages.
+- Use Context7 for current implementation docs after a tool is chosen.
 
-   ### This session
-   - Did: <what completed>
-   - Tried but failed: <what didn't work, why>
-   - Decided: <decisions, why>
+## tools
+- Repo search: `ccc search`, `ccc index`, `ccc status`.
+- Memory: `mem0 add`, `mem0 search`, `mem0 list`.
+- Browser/UI: Playwright MCP.
+- Library docs: Context7 MCP.
+- External freshness: `/freshcheck`.
 
-   ### Next session must
-   1. <concrete step>
-   2. <concrete step>
-   3. <concrete step>
-   ```
-2. Confirm to the user: "PROJECT.md checkpointed."
-3. Suggest starting a new session if context is heavy.
+## mcp servers
+Configured globally in `~/.codex/config.toml`. Shipped set: Context7 and Playwright only.
 
-**After completing a phase from PLAYBOOK.md:**
-- Update `PROJECT.md` → "Recent Decisions" (most recent on top, `YYYY-MM-DD — decision — why`).
-- Move stale "Current Task" notes there.
-- Commit `PROJECT.md` with the phase output.
-
-**If `PROJECT.md` is empty or stale and you cannot determine state — STOP and ask the user.** Do not invent context.
-
-## skills (global, shared with Claude Code & OpenCode)
-Codex has no skill auto-discovery. The 11 skills live at `~/.claude/skills/<name>/SKILL.md`.
-To use one, READ its `SKILL.md` end-to-end and follow it exactly. The `/`-prompts in
-`~/.codex/prompts/` are thin shortcuts that do this for you.
-
-## before any code
-- Read AGENTS.md and PROJECT.md (rules above)
-- Run `ccc search "<intent>"` before grep or blind file reads
-- Tests pass before touching anything
-- Plan exists before multi-file changes
-
-## workflow
-PLAYBOOK.md, 7 phases. Skills are mandatory, not optional.
-brainstorm → plan → tdd → verify → code-review → ship.
+## mem0 rules
+- Use Mem0 as CLI-first memory.
+- Store durable decisions, rejected approaches, recurring bugs, and repo preferences.
+- Never store secrets, API keys, passwords, customer data, or temporary notes.
 
 ## code quality
-- YAGNI. Simplest thing that works.
-- No TODO comments. Fix or file an issue.
-- No `console.log` / `print` in shipped code.
-- Typed functions only. No `any`.
-- Public functions: one-line docstring.
-
-## compression (caveman rules)
-Respond like smart caveman. Cut filler, keep substance.
-- Drop articles, fillers (just, really, actually, basically).
-- Drop pleasantries (sure, certainly, happy to).
-- No hedging. Fragments fine.
-- Technical terms exact. Code blocks unchanged.
-- Pattern: [thing] [action] [reason]. [next step].
-
-## security
-- No secrets in code. Env vars only.
-- No eval. No `shell=True`. No string-concat subprocess.
-- Validate every external input.
+- Prefer the smallest safe change.
+- Follow existing patterns.
+- No shipped `console.log`/`print` debugging.
+- No `any` unless justified.
+- Validate external input.
+- Public functions need clear names or short docstrings.
 
 ## dependency safety
 - Prefer latest stable patch. Avoid prerelease unless approved.
-- Node: use pnpm 11+, commit lockfile, enforce minimumReleaseAge.
-- Python: use uv, commit uv.lock, run scanner before merge.
-- Dependency PRs: audit/outdated, changelog skim, full verify.
-- New package needs reason, maintainer health, security check.
+- Node: use pnpm, commit lockfile, respect `minimumReleaseAge`.
+- Python: use uv, commit `uv.lock`, run scanner before merge.
+- New package needs reason, freshness check, security check, and verification.
 
 ## frontend
-- Invoke `frontend-design` before UI changes.
-- Verify responsive desktop/mobile states.
-- Build real UI, not landing filler.
-
-## git
-- Branch per feature. Never commit to main.
-- PR description: what, why, how to test.
-
-## tools
-
-### tool decision matrix
-- Find code → `ccc search` (NEVER grep or Read blind)
-- Recall past context → `mem0 search`
-- Test UI flow → playwright (MCP)
-- Live library docs → context7 (MCP)
-- UI/design work → `frontend-design` skill
-- Never use one tool for another's job.
-
-### MCP servers (Codex)
-- Configured globally in `~/.codex/config.toml` under `[mcp_servers.*]` (TOML, not JSON).
-- Shipped set: `context7`, `playwright`. See `config.toml` in the codex drop-in folder.
-
-### ccc (semantic code search, if installed)
-- `ccc index .` — once per project
-- `ccc search "<intent>"` — start here, always
-- `ccc status` — index health
-
-### mem0 (personal memory, if installed)
-- `mem0 search "<query>"` — recall
-- `mem0 add "<fact>"` — save decision/lesson
-
-### model routing
-- For OpenRouter comparison, see `docs/ROUTER-OPTIONS.md`.
-- Do not remove OpenCode until Claude Code Router is tested on real work.
-- Keep routing config reversible and avoid persistent shell activation.
-
-## when stuck
-- Invoke `debug` skill. 4-phase root cause.
-- Never guess. Find cause first.
-- 3 failed attempts → stop, document, ask.
+- Use the UI recipe from `optional-recipies/` before UI work when needed.
+- Verify desktop and mobile states.
+- Check overflow, overlap, keyboard flow, loading/empty/error states, and accessibility basics.
 
 ## done means
-- Tests pass. No lint, no type errors.
-- `code-review` skill ran. Blocking + important issues fixed.
-- Committed with clear message.
-- `PROJECT.md` updated.
+- Verification commands pass.
+- `/review` completed for meaningful changes.
+- `PROJECT.md` checkpointed when state changed.
+- Durable decisions stored with Mem0 when useful.

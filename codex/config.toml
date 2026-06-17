@@ -1,16 +1,11 @@
 # Codex MCP servers.
-# Codex reads MCP config from your GLOBAL config: ~/.codex/config.toml
-# (Codex has no per-project MCP file like Claude Code's .mcp.json).
-# Merge the two blocks below into ~/.codex/config.toml. If that file already
-# has an [mcp_servers.*] table, add these alongside it — don't duplicate keys.
-#
-# Pinned versions on purpose. Bump deliberately; never use @latest.
-# sequential-thinking is intentionally omitted (it breaks non-Claude MCP loaders).
+# Codex reads MCP config from your GLOBAL config: ~/.codex/config.toml.
+# Merge these blocks into ~/.codex/config.toml. Keep versions pinned.
 
 [mcp_servers.context7]
 command = "pnpm"
-args = ["dlx", "@upstash/context7-mcp@2.2.5"]
+args = ["dlx", "@upstash/context7-mcp@3.2.1"]
 
 [mcp_servers.playwright]
 command = "pnpm"
-args = ["dlx", "@playwright/mcp@0.0.75"]
+args = ["dlx", "@playwright/mcp@0.0.76"]

@@ -1,18 +1,6 @@
-.venv/
-__pycache__/
-*.pyc
-*.pyo
-.pytest_cache/
-dist/
-build/
-*.egg-info/
-research_results.json
-research_brief.md
-validation_log.json
 .DS_Store
 .worktrees/
 
-# Local-only — never push. For private notes, security plans, WIP drafts.
+# Local-only scratch — never push.
 .local/
 .private/
-
