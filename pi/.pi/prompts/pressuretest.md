@@ -1,6 +1,7 @@
-# /pressuretest
-
-Use grill-me.
+---
+description: Challenge a plan before implementation
+argument-hint: "<plan or idea>"
+---
 
 Plan or idea to pressure-test:
 $ARGUMENTS
@@ -21,4 +22,4 @@ Output:
 - Unanswered questions
 - Failure modes
 - Simpler alternative
-- Go / no-go recommendation
+- Go or no-go recommendation

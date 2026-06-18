@@ -1,11 +1,13 @@
 # Prompt: Install Final Coding Agent Skill Stack
 
-Use this prompt separately inside Claude Code, Codex, OpenCode, and Pi.dev.
+Use this prompt separately inside Claude Code, Codex, and OpenCode.
+
+Pi uses the dedicated `pi/` drop-in in this repo instead of this installer prompt.
 
 ```text
 Install and configure my final global coding-agent skill stack for this platform only.
 
-Target platform: [CLAUDE CODE / CODEX / OPENCODE / PI.DEV]
+Target platform: [CLAUDE CODE / CODEX / OPENCODE]
 
 Non-negotiable rules:
 - Configure globally where the platform supports global configuration.

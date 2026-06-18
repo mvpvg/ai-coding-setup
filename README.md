@@ -1,6 +1,6 @@
 # AI Coding Setup
 
-> Drop-in workflow prompts and agent rules for Claude Code, Codex, OpenCode, and Pi.dev. Lean aliases, current docs, browser validation, semantic code search, and CLI-first memory.
+> Drop-in workflow prompts and agent rules for Claude Code, Codex, OpenCode, and Pi. Lean aliases, current docs, browser validation, semantic code search, and CLI-first memory.
 
 This repo is a team starter kit for agentic coding. It intentionally avoids overlapping methodology stacks and local skill sprawl. The core idea is simple: one workflow library, the same aliases across tools, and clear rules for when to spec, implement, review, fresh-check, and release.
 
@@ -12,7 +12,7 @@ This repo is a team starter kit for agentic coding. It intentionally avoids over
 | `claude-code/` | Claude Code drop-in: `CLAUDE.md`, `.mcp.json`, hooks, slash commands. |
 | `codex/` | Codex drop-in: `AGENTS.md`, `config.toml`, global prompt files. |
 | `opencode/` | OpenCode drop-in: `AGENTS.md`, `opencode.json`, command files. |
-| `pi-dev/` | Pi.dev prompt templates adapted from `workflows/`. |
+| `pi/` | Pi harness drop-in: `AGENTS.md`, `PROJECT.md`, and `.pi/prompts/`. |
 | `docs/WORKFLOW-STACK.md` | The lean stack decision and tool roles. |
 | `docs/INSTALL-SKILL-STACK-PROMPT.md` | Vital prompt for installing the underlying skill/plugin stack that makes aliases work. |
 | `docs/PROMPTING-TECHNIQUES.md` | Spec-driven and bulletproof implementation prompting guide. |
@@ -48,11 +48,11 @@ Do not install duplicate memory MCPs, duplicate docs MCPs, Dox, Superpowers, or 
 ## Install Shape
 
 1. Install prerequisites: Python 3.11+, `uv`, Node.js 20+, `pnpm`, `git`, and your agent CLI.
-2. Run the prompt in `docs/INSTALL-SKILL-STACK-PROMPT.md` inside your chosen agent to install the underlying skills/plugins.
+2. For Claude Code, Codex, or OpenCode, run `docs/INSTALL-SKILL-STACK-PROMPT.md` inside the agent to install the underlying skills/plugins.
 3. Install optional CLIs: `uv tool install cocoindex-code` and `uv tool install mem0ai`.
 4. Copy the agent folder into your target project.
 5. For Codex, also merge `codex/config.toml` into `~/.codex/config.toml` and copy `codex/prompts/*` to `~/.codex/prompts/`.
-6. For Pi.dev, import `pi-dev/prompts/` as reusable prompt templates.
+6. For Pi, copy `pi/AGENTS.md`, `pi/PROJECT.md`, and `pi/.pi/prompts/` into the target project.
 
 ## Default Workflow
 
@@ -77,4 +77,3 @@ For external dependencies or tool choices:
 ## License
 
 MIT — see `LICENSE`.
-| `optional-recipies/` | Optional prompt recipes for UI, security, performance, and repo good practices. Not installed as aliases by default. |

@@ -8,7 +8,7 @@ Report:
 - OS and shell.
 - Current repo path.
 - Target project path.
-- Primary tool: Claude Code, Codex, OpenCode, or Pi.dev.
+- Primary tool: Claude Code, Codex, OpenCode, or Pi.
 
 ## Step B — Check Required Tools
 
@@ -80,9 +80,10 @@ Copy-Item -Path <repo>\codex\prompts\* -Destination $HOME\.codex\prompts\ -Force
 
 Then merge `codex/config.toml` into `~/.codex/config.toml`.
 
-Pi.dev:
-- Import `pi-dev/prompts/` as reusable prompts.
-- Use `pi-dev/README.md` as the setup guide.
+Pi:
+- Copy `pi/AGENTS.md` and `pi/PROJECT.md` into the target project.
+- Copy `pi/.pi/prompts/` into the target project's `.pi/prompts/`.
+- Use `pi/README.md` as the setup guide.
 
 ## Step E — Verify
 

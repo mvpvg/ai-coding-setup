@@ -1,4 +1,4 @@
-# AGENT RULES — <PROJECT-NAME>
+# Agent Instructions
 
 ## identity
 Senior engineer. Ship deliberately. Verify before claiming done.
@@ -21,7 +21,7 @@ Response style:
 - Code blocks unchanged.
 - Format: decision -> reason -> action.
 
-## stack — fill after `/feature` planning
+## stack - fill after `/feature` planning
 <!--
 - Frontend: <chosen>
 - Backend: <chosen>
@@ -30,7 +30,7 @@ Response style:
 - Tests: <chosen>
 -->
 
-## verification commands — fill after `/feature` planning
+## verification commands - fill after `/feature` planning
 <!--
 - Lint: `<lint-cmd>`
 - Typecheck: `<typecheck-cmd>`
@@ -39,35 +39,38 @@ Response style:
 - Dev: `<dev-cmd>`
 -->
 
-## session start
-Read `PROJECT.md`, check `ccc status` if available, then check `git status`.
+## session continuity
+At session start:
+1. Read `PROJECT.md`.
+2. Check `git status`.
+3. Confirm the task, scope, and next workflow.
+
+Before context gets heavy:
+1. Summarize decisions in `PROJECT.md`.
+2. Record durable decisions with `mem0` when useful.
+3. Start a fresh session if needed.
 
 ## workflow aliases
-Use the slash commands in `.claude/commands/`.
-
-- `/feature` — build functionality safely.
-- `/incident` — debug without guessing.
-- `/performance` — investigate slowness with evidence.
-- `/release` — prepare deployment.
-- `/refactor` — improve structure without behavior change.
-- `/review` — code review.
-- `/testplan` — design tests.
-- `/freshcheck` — current external research.
-- `/pressuretest` — challenge a plan.
+Use `.pi/prompts/`: `/feature`, `/incident`, `/performance`, `/release`, `/refactor`, `/review`, `/testplan`, `/freshcheck`, `/pressuretest`.
 
 ## before code
-- Read `AGENTS.md`/`CLAUDE.md` and `PROJECT.md`.
+- Read `AGENTS.md` and `PROJECT.md`.
 - Use `ccc search "<intent>"` before broad file reads if `ccc` is installed.
 - Use `/feature` before multi-file, API, auth, data, infra, or user-facing changes.
-- Use `/freshcheck` before adopting or upgrading external tools/packages.
-- Use Context7 for current implementation docs after a tool is chosen.
+- Use `/freshcheck` before adopting or upgrading external tools or packages.
+- Use Context7 for current implementation docs after a tool or framework is chosen.
 
 ## tools
 - Repo search: `ccc search`, `ccc index`, `ccc status`.
 - Memory: `mem0 add`, `mem0 search`, `mem0 list`.
-- Browser/UI: Playwright MCP.
-- Library docs: Context7 MCP.
+- Browser/UI: Playwright MCP when available.
+- Library docs: Context7 MCP when available.
 - External freshness: `/freshcheck`.
+
+## pi safety
+- Pi has no built-in permission boundary. Prefer trusted repos or containerized runs.
+- Never assume sandboxing exists unless the operator explicitly configured it.
+- Ask before destructive commands, credential changes, or networked installs.
 
 ## mem0 rules
 - Use Mem0 as CLI-first memory.
@@ -77,7 +80,7 @@ Use the slash commands in `.claude/commands/`.
 ## code quality
 - Prefer the smallest safe change.
 - Follow existing patterns.
-- No shipped `console.log`/`print` debugging.
+- No shipped `console.log` or `print` debugging.
 - No `any` unless justified.
 - Validate external input.
 - Public functions need clear names or short docstrings.
@@ -91,10 +94,10 @@ Use the slash commands in `.claude/commands/`.
 ## frontend
 - Use the UI recipe from `optional-recipies/` before UI work when needed.
 - Verify desktop and mobile states.
-- Check overflow, overlap, keyboard flow, loading/empty/error states, and accessibility basics.
+- Check overflow, overlap, keyboard flow, loading, empty, error states, and accessibility basics.
 
 ## done means
 - Verification commands pass.
 - `/review` completed for meaningful changes.
-- `PROJECT.md` updated when state changed.
+- `PROJECT.md` checkpointed when state changed.
 - Durable decisions stored with Mem0 when useful.

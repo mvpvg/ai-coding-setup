@@ -1,21 +1,12 @@
-# /freshcheck
-
-Use Last30Days.
+---
+description: Research current external tooling before adoption or upgrade
+argument-hint: "<tool, library, API, or agent>"
+---
 
 Freshness check target:
 $ARGUMENTS
 
 This is external research, not codebase research.
-
-Use this for:
-- Libraries
-- Frameworks
-- APIs
-- MCP servers
-- AI coding agents
-- Infrastructure tools
-- Cloud services
-- Package maintenance checks
 
 Check:
 - Recent releases

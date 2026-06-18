@@ -1,6 +1,6 @@
 # Prompting Techniques
 
-Use this guide when working with Claude Code, Codex, OpenCode, or Pi.dev.
+Use this guide when working with Claude Code, Codex, OpenCode, or Pi.
 
 These techniques are recommendations and recipes. They are not installed as default aliases because Compound Engineering already owns the maintained planning/execution loop. Trial these manually first; only promote them to aliases after the team proves they add value without duplicating CE.
 

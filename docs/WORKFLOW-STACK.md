@@ -18,7 +18,9 @@ Optional recipes live in `optional-recipies/` and are not installed as aliases b
 
 ## Required Underlying Stack
 
-The aliases depend on the installed skill/plugin stack. Use `docs/INSTALL-SKILL-STACK-PROMPT.md` inside each platform before relying on the aliases.
+For Claude Code, Codex, and OpenCode, the aliases depend on the installed skill/plugin stack. Use `docs/INSTALL-SKILL-STACK-PROMPT.md` inside those platforms before relying on the aliases.
+
+Pi is the exception. Its prompts in `pi/.pi/prompts/` are self-contained because Pi is a separate agent harness with its own prompt system.
 
 Core stack:
 - Compound Engineering.

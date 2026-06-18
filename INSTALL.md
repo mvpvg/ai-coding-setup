@@ -1,6 +1,6 @@
 # Install
 
-Manual setup for Claude Code, Codex, OpenCode, and Pi.dev.
+Manual setup for Claude Code, Codex, OpenCode, and Pi.
 
 ## Prerequisites
 
@@ -10,7 +10,7 @@ Install:
 - Node.js 20+
 - `pnpm`
 - `git`
-- Your agent CLI: Claude Code, Codex, OpenCode, or Pi.dev
+- Your agent CLI: Claude Code, Codex, OpenCode, or Pi
 
 Useful optional CLIs:
 
@@ -90,13 +90,19 @@ Copy-Item -Path <repo>\codex\prompts\* -Destination $HOME\.codex\prompts\ -Force
 
 Run `/start` at the beginning of each session and `/checkpoint` before context gets heavy.
 
-## Pi.dev
+## Pi
 
-Import `pi-dev/prompts/` as reusable prompt templates.
+Copy into the target project:
 
-See `pi-dev/README.md`.
+- `pi/AGENTS.md`
+- `pi/PROJECT.md`
+- `pi/.pi/prompts/`
 
-Before relying on aliases, run the stack installer prompt in `docs/INSTALL-SKILL-STACK-PROMPT.md` inside Pi.dev.
+See `pi/README.md`.
+
+Pi prompts in this repo are self-contained. They do not depend on the skill/plugin installer prompt used by Claude Code, Codex, and OpenCode.
+
+Pi itself has no built-in permission boundary, so prefer trusted repos or a containerized Pi setup for stronger isolation.
 
 ## Tools
 

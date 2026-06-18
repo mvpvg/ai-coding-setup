@@ -1,6 +1,6 @@
 # Maintaining ai-coding-setup
 
-This repo is a lean workflow-alias kit for Claude Code, Codex, OpenCode, and Pi.dev.
+This repo is a lean workflow-alias kit for Claude Code, Codex, OpenCode, and Pi.
 
 ## North Star
 
@@ -29,7 +29,7 @@ workflows/
 claude-code/
 codex/
 opencode/
-pi-dev/
+pi/
 docs/
 templates/
 ```
@@ -42,8 +42,9 @@ When adding or changing a workflow:
    - `claude-code/.claude/commands/<name>.md`
    - `opencode/.opencode/commands/<name>.md`
    - `codex/prompts/<name>.md`
-   - `pi-dev/prompts/<name>.md`
-3. Update `README.md`, `PLAYBOOK.md`, and `docs/WORKFLOW-STACK.md` if the alias list changes.
+   - `pi/.pi/prompts/<name>.md`
+3. Pi prompts are allowed to be adapted for Pi-native behavior when the other platforms depend on external skill/plugin stacks.
+4. Update `README.md`, `PLAYBOOK.md`, and `docs/WORKFLOW-STACK.md` if the alias list changes.
 
 ## Updating MCP Versions
 

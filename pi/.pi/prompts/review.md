@@ -1,8 +1,9 @@
-# /review
+---
+description: Review code and report findings by severity
+argument-hint: "<branch, diff, or files>"
+---
 
-Use code-review skill.
-
-Review:
+Review target:
 $ARGUMENTS
 
 Focus on:
@@ -20,7 +21,7 @@ Output findings by severity:
 - Low
 
 For each issue include:
-- File/function
+- File or function
 - Problem
 - Why it matters
 - Smallest fix
